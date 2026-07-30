@@ -4,10 +4,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { name, phone, message } = req.body ?? {};
+  const { name, age, school, contact } = req.body ?? {};
 
-  if (typeof name !== 'string' || !name.trim() || typeof phone !== 'string' || !phone.trim()) {
-    return res.status(400).json({ error: 'Name and phone are required' });
+  if (!name?.trim() || !age?.trim() || !school?.trim() || !contact?.trim()) {
+    return res.status(400).json({ error: 'All fields are required' });
   }
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -22,18 +22,18 @@ export default async function handler(req, res) {
   }
 
   const trimmedName = name.trim().slice(0, 100);
-  const trimmedPhone = phone.trim().slice(0, 30);
-  const trimmedMessage = typeof message === 'string' ? message.trim().slice(0, 1000) : '';
+  const trimmedAge = age.trim().slice(0, 20);
+  const trimmedSchool = school.trim().slice(0, 100);
+  const trimmedContact = contact.trim().slice(0, 100);
 
-  const text = [
-    'Yangi volontyor arizasi — TEDxSergeli',
-    '',
-    `Ism: ${trimmedName}`,
-    `Telefon: ${trimmedPhone}`,
-    trimmedMessage ? `Xabar: ${trimmedMessage}` : null,
-  ]
-    .filter(Boolean)
-    .join('\n');
+  const text = `
+🆕 <b>Yangi volontyor arizasi — TEDxSergeli</b>
+
+👤 <b>Ism:</b> ${trimmedName}
+📅 <b>Yosh:</b> ${trimmedAge}
+🎓 <b>O'qish joyi:</b> ${trimmedSchool}
+📞 <b>Aloqa:</b> ${trimmedContact}
+  `.trim();
 
   try {
     const results = await Promise.all(
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
         fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, text }),
+          body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
         })
       )
     );
