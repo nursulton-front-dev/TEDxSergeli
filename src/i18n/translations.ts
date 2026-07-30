@@ -245,6 +245,21 @@ export const translations = {
       closeBtn: { uz: 'Yopish', ru: 'Закрыть', en: 'Close' },
     },
   },
+  sponsors: {
+    label: { uz: 'Homiylar', ru: 'Спонсоры', en: 'Sponsors' },
+    titleStart: { uz: 'Bizning', ru: 'Наши', en: 'Our' },
+    titleAccent: { uz: 'homiylarimiz', ru: 'спонсоры', en: 'sponsors' },
+    subtitle: {
+      uz: 'Tadbirimizni qo\'llab-quvvatlayotgan hamkorlarimizga minnatdorchilik bildiramiz',
+      ru: 'Мы благодарим наших партнеров за поддержку мероприятия',
+      en: 'We thank our partners for supporting the event',
+    },
+    gold: { uz: 'Oltin homiy', ru: 'Золотой спонсор', en: 'Gold Sponsor' },
+    silver: { uz: 'Kumush homiy', ru: 'Серебряный спонсор', en: 'Silver Sponsor' },
+    bronze: { uz: 'Bronza homiy', ru: 'Бронзовый спонсор', en: 'Bronze Sponsor' },
+    logoPlaceholder: { uz: 'Logotip', ru: 'Логотип', en: 'Logo' },
+    becomeBtn: { uz: 'Homiy bo\'lish', ru: 'Стать спонсором', en: 'Become a Sponsor' },
+  },
   footer: {
     desc: {
       uz: "TEDxSergeli — Toshkentda tashkil etilgan mustaqil TEDx tadbiri. G'oyalarni tarqatamiz.",
