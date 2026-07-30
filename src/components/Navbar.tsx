@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Sun, Moon } from 'lucide-react';
 import { useLang } from '../i18n/LanguageContext';
+import { useTheme } from '../theme/ThemeContext';
 import { translations, type Lang } from '../i18n/translations';
 
 const langLabels: Record<Lang, string> = { uz: 'UZ', ru: 'RU', en: 'EN' };
@@ -9,9 +10,12 @@ const langOrder: Lang[] = ['uz', 'ru', 'en'];
 
 export default function Navbar() {
   const { lang, setLang } = useLang();
+  const { theme, toggleTheme } = useTheme();
   const t = translations.nav;
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const logoSrc = theme === 'dark' ? '/tedx-logo-white.png' : '/tedx-logo-black.png';
 
   const navLinks = [
     { name: t.home[lang], href: '#home' },
@@ -19,7 +23,6 @@ export default function Navbar() {
     { name: t.speakers[lang], href: '#speakers' },
     { name: t.schedule[lang], href: '#schedule' },
     { name: t.team[lang], href: '#team' },
-    { name: t.sponsors[lang], href: '#sponsors' },
   ];
 
   useEffect(() => {
@@ -41,7 +44,7 @@ export default function Navbar() {
         transition={{ duration: 0.6, ease: 'easeOut' }}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
-            ? 'bg-white/90 backdrop-blur-md shadow-lg shadow-black/5'
+            ? 'bg-ted-bg/90 backdrop-blur-md shadow-lg shadow-black/5'
             : 'bg-transparent'
         }`}
       >
@@ -49,9 +52,9 @@ export default function Navbar() {
           <div className="flex items-center justify-between h-20">
             <a href="#home" className="flex-shrink-0">
               <img
-                src="/tedx-logo-black.png"
+                src={logoSrc}
                 alt="TEDxSergeli"
-                className="h-8 md:h-10 w-auto"
+                className="h-11 md:h-14 w-auto"
               />
             </a>
 
@@ -83,9 +86,17 @@ export default function Navbar() {
                 ))}
               </div>
 
+              <button
+                onClick={toggleTheme}
+                aria-label={t.themeToggle[lang]}
+                className="ml-2 p-2 text-ted-text-secondary hover:text-ted-red transition-colors"
+              >
+                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+
               <a
                 href="#apply"
-                className="ml-3 px-6 py-2.5 bg-ted-red text-white text-sm font-semibold rounded hover:bg-ted-red-dark transition-colors duration-200"
+                className="ml-1 px-6 py-2.5 bg-ted-red text-white text-sm font-semibold rounded hover:bg-ted-red-dark transition-colors duration-200"
               >
                 {t.apply[lang]}
               </a>
@@ -107,6 +118,13 @@ export default function Navbar() {
                   </button>
                 ))}
               </div>
+              <button
+                onClick={toggleTheme}
+                aria-label={t.themeToggle[lang]}
+                className="p-2 text-ted-text-secondary hover:text-ted-red transition-colors"
+              >
+                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
               <button
                 onClick={() => setMobileOpen(true)}
                 className="p-2 text-ted-text hover:text-ted-red transition-colors"
@@ -136,10 +154,10 @@ export default function Navbar() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'tween', duration: 0.3 }}
-              className="absolute right-0 top-0 bottom-0 w-[300px] bg-white border-l border-ted-border flex flex-col shadow-2xl"
+              className="absolute right-0 top-0 bottom-0 w-[300px] bg-ted-bg border-l border-ted-border flex flex-col shadow-2xl"
             >
               <div className="flex items-center justify-between p-6">
-                <img src="/tedx-logo-black.png" alt="TEDxSergeli" className="h-7" />
+                <img src={logoSrc} alt="TEDxSergeli" className="h-9" />
                 <button
                   onClick={() => setMobileOpen(false)}
                   className="p-2 text-ted-text hover:text-ted-red transition-colors"

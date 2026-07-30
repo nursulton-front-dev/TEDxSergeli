@@ -22,7 +22,7 @@ function SpeakerCard({ name, topic, index }: { name: string; topic: string; inde
             TBA
           </span>
         </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-ted-bg/90 via-transparent to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-5">
           <div className="h-0.5 w-8 bg-ted-red mb-3 group-hover:w-12 transition-all duration-300" />
           <h3 className="text-ted-text font-bold text-lg">{name}</h3>

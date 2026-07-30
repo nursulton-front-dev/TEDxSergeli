@@ -7,8 +7,8 @@ export const translations = {
     speakers: { uz: 'Spikerlar', ru: 'Спикеры', en: 'Speakers' },
     schedule: { uz: 'Dastur', ru: 'Программа', en: 'Schedule' },
     team: { uz: 'Jamoa', ru: 'Команда', en: 'Team' },
-    sponsors: { uz: 'Hamkorlar', ru: 'Партнёры', en: 'Sponsors' },
     apply: { uz: 'Ariza', ru: 'Подать заявку', en: 'Apply' },
+    themeToggle: { uz: 'Mavzuni almashtirish', ru: 'Переключить тему', en: 'Toggle theme' },
   },
   hero: {
     badge: {
@@ -170,21 +170,6 @@ export const translations = {
     },
     tba: { uz: 'Tez kunda', ru: 'Скоро', en: 'Coming soon' },
   },
-  sponsors: {
-    label: { uz: 'Hamkorlar', ru: 'Партнёры', en: 'Sponsors' },
-    titleStart: { uz: 'Bizning', ru: 'Наши', en: 'Our' },
-    titleAccent: { uz: 'hamkorlarimiz', ru: 'партнёры', en: 'partners' },
-    subtitle: {
-      uz: "TEDxSergeli hamkorlariga qo'shiling va g'oyalar tarqalishiga hissa qo'shing.",
-      ru: 'Присоединяйтесь к партнёрам TEDxSergeli и помогите распространять идеи.',
-      en: 'Join TEDxSergeli partners and help spread ideas.',
-    },
-    gold: { uz: 'Oltin hamkor', ru: 'Золотой партнёр', en: 'Gold Sponsor' },
-    silver: { uz: 'Kumush hamkor', ru: 'Серебряный партнёр', en: 'Silver Sponsor' },
-    bronze: { uz: 'Bronza hamkor', ru: 'Бронзовый партнёр', en: 'Bronze Sponsor' },
-    logoPlaceholder: { uz: 'Sizning logongiz', ru: 'Ваш логотип', en: 'Your logo' },
-    becomeBtn: { uz: "Hamkor bo'lish", ru: 'Стать партнёром', en: 'Become a Sponsor' },
-  },
   cta: {
     label: { uz: "Qo'shiling", ru: 'Присоединяйтесь', en: 'Join us' },
     titleStart: { uz: 'TEDxSergeli', ru: 'Станьте частью', en: 'Be part of' },
@@ -221,6 +206,43 @@ export const translations = {
           en: 'Attend for inspiration and new connections',
         },
       },
+    },
+    form: {
+      title: { uz: 'Volontyor arizasi', ru: 'Заявка волонтёра', en: 'Volunteer application' },
+      subtitle: {
+        uz: "Ma'lumotlaringizni qoldiring, tez orada siz bilan bog'lanamiz.",
+        ru: 'Оставьте свои данные, и мы скоро свяжемся с вами.',
+        en: "Leave your details and we'll get in touch soon.",
+      },
+      nameLabel: { uz: 'Ism familiya', ru: 'Имя и фамилия', en: 'Full name' },
+      namePlaceholder: { uz: 'Ismingizni kiriting', ru: 'Введите имя', en: 'Enter your name' },
+      phoneLabel: { uz: 'Telefon raqami', ru: 'Номер телефона', en: 'Phone number' },
+      phonePlaceholder: { uz: '+998 90 123 45 67', ru: '+998 90 123 45 67', en: '+998 90 123 45 67' },
+      messageLabel: { uz: 'Xabar', ru: 'Сообщение', en: 'Message' },
+      messagePlaceholder: {
+        uz: "Qo'shimcha ma'lumot (ixtiyoriy)",
+        ru: 'Дополнительная информация (необязательно)',
+        en: 'Additional info (optional)',
+      },
+      submitBtn: { uz: 'Yuborish', ru: 'Отправить', en: 'Submit' },
+      submitting: { uz: 'Yuborilmoqda...', ru: 'Отправка...', en: 'Submitting...' },
+      successTitle: { uz: 'Rahmat!', ru: 'Спасибо!', en: 'Thank you!' },
+      successMsg: {
+        uz: "Arizangiz qabul qilindi. Tez orada siz bilan bog'lanamiz.",
+        ru: 'Ваша заявка принята. Мы скоро свяжемся с вами.',
+        en: "Your application has been received. We'll be in touch soon.",
+      },
+      errorMsg: {
+        uz: "Xatolik yuz berdi. Iltimos, birozdan so'ng qaytadan urinib ko'ring.",
+        ru: 'Произошла ошибка. Пожалуйста, попробуйте ещё раз позже.',
+        en: 'Something went wrong. Please try again in a moment.',
+      },
+      requiredError: {
+        uz: "Ism va telefon raqami majburiy",
+        ru: 'Имя и номер телефона обязательны',
+        en: 'Name and phone number are required',
+      },
+      closeBtn: { uz: 'Yopish', ru: 'Закрыть', en: 'Close' },
     },
   },
   footer: {

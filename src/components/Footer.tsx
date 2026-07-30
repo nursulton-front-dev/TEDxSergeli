@@ -1,4 +1,5 @@
 import { useLang } from '../i18n/LanguageContext';
+import { useTheme } from '../theme/ThemeContext';
 import { translations } from '../i18n/translations';
 
 function InstagramIcon() {
@@ -21,15 +22,17 @@ function TelegramIcon() {
 
 export default function Footer() {
   const { lang } = useLang();
+  const { theme } = useTheme();
   const t = translations.footer;
   const navT = translations.nav;
+
+  const logoSrc = theme === 'dark' ? '/tedx-logo-white.png' : '/tedx-logo-black.png';
 
   const navLinks = [
     { name: navT.about[lang], href: '#about' },
     { name: navT.speakers[lang], href: '#speakers' },
     { name: navT.schedule[lang], href: '#schedule' },
     { name: navT.team[lang], href: '#team' },
-    { name: navT.sponsors[lang], href: '#sponsors' },
   ];
 
   return (
@@ -37,7 +40,7 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="py-16 grid grid-cols-1 md:grid-cols-3 gap-12">
           <div>
-            <img src="/tedx-logo-black.png" alt="TEDxSergeli" className="h-8 mb-4" />
+            <img src={logoSrc} alt="TEDxSergeli" className="h-10 mb-4" />
             <p className="text-ted-text-secondary text-sm leading-relaxed">
               {t.desc[lang]}
             </p>

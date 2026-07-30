@@ -10,7 +10,7 @@ export default function Hero() {
   return (
     <section
       id="home"
-      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-ted-bg"
     >
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(235,0,40,0.06)_0%,_transparent_70%)]" />

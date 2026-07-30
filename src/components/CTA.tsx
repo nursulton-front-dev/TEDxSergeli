@@ -1,13 +1,18 @@
 import { motion, useInView } from 'framer-motion';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useLang } from '../i18n/LanguageContext';
 import { translations } from '../i18n/translations';
+import VolunteerModal from './VolunteerModal';
+
+const SPEAKER_FORM_URL =
+  'https://docs.google.com/forms/d/e/1FAIpQLSfmtPn_Ca1KRD5YnVqDh0FfN10E3PEU57EnwKcbLRteQbO9RA/viewform?usp=publish-editor';
 
 export default function CTA() {
   const { lang } = useLang();
   const t = translations.cta;
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-80px' });
+  const [volunteerOpen, setVolunteerOpen] = useState(false);
 
   const cards = [t.cards.speaker, t.cards.volunteer, t.cards.attendee];
 
@@ -35,21 +40,19 @@ export default function CTA() {
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <a
-            href="https://forms.google.com"
+            href={SPEAKER_FORM_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="px-8 py-3.5 bg-ted-red text-white font-semibold rounded hover:bg-ted-red-dark transition-all duration-300 hover:shadow-lg hover:shadow-ted-red/20"
           >
             {t.speakerBtn[lang]}
           </a>
-          <a
-            href="https://forms.google.com"
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={() => setVolunteerOpen(true)}
             className="px-8 py-3.5 border border-ted-border text-ted-text font-medium rounded hover:border-ted-red hover:text-ted-red transition-all duration-300"
           >
             {t.volunteerBtn[lang]}
-          </a>
+          </button>
         </div>
 
         <motion.div
@@ -61,7 +64,7 @@ export default function CTA() {
           {cards.map((card) => (
             <div
               key={card.title[lang]}
-              className="p-6 rounded-lg bg-white border border-ted-border hover:border-ted-red/20 hover:shadow-md transition-all duration-300 text-left"
+              className="p-6 rounded-lg bg-ted-bg border border-ted-border hover:border-ted-red/20 hover:shadow-md transition-all duration-300 text-left"
             >
               <h3 className="text-ted-text font-bold text-lg mb-2">{card.title[lang]}</h3>
               <p className="text-ted-text-secondary text-sm">{card.desc[lang]}</p>
@@ -69,6 +72,8 @@ export default function CTA() {
           ))}
         </motion.div>
       </motion.div>
+
+      <VolunteerModal isOpen={volunteerOpen} onClose={() => setVolunteerOpen(false)} />
     </section>
   );
 }

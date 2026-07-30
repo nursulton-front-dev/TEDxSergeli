@@ -66,7 +66,7 @@ export default function Schedule() {
   }));
 
   return (
-    <section id="schedule" className="py-24 md:py-32 bg-white relative">
+    <section id="schedule" className="py-24 md:py-32 bg-ted-bg relative">
       <div className="max-w-4xl mx-auto px-6">
         <AnimatedSection>
           <div className="text-center mb-16">

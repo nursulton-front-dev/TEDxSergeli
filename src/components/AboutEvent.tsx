@@ -34,7 +34,7 @@ export default function AboutEvent() {
   ];
 
   return (
-    <section id="about" className="py-24 md:py-32 bg-white relative overflow-hidden">
+    <section id="about" className="py-24 md:py-32 bg-ted-bg relative overflow-hidden">
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-ted-red/[0.03] rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
 
       <div className="max-w-6xl mx-auto px-6 relative z-10">

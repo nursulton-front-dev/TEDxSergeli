@@ -14,6 +14,16 @@
   --font-body: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
+.dark {
+  --color-ted-red-light: #3A0713;
+  --color-ted-bg: #0B0B0F;
+  --color-ted-bg-alt: #16161B;
+  --color-ted-bg-card: #1E1E24;
+  --color-ted-text: #F5F5F7;
+  --color-ted-text-secondary: #9CA3AF;
+  --color-ted-border: #2A2A32;
+}
+
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 80px;
@@ -26,6 +36,7 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 ::selection {
@@ -48,4 +59,12 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-ted-red);
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1a1a1f;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #3a3a42;
 }
