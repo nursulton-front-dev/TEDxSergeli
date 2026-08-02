@@ -13,10 +13,10 @@ const kv = {
       });
       const data = await res.json();
       if (!data.result) return null;
-      
+
       let parsed = JSON.parse(data.result);
       if (typeof parsed === 'string') {
-        try { parsed = JSON.parse(parsed); } catch {}
+        try { parsed = JSON.parse(parsed); } catch { }
       }
       return parsed;
     } catch (e) {
@@ -272,7 +272,7 @@ export default async function handler(req, res) {
 
       // === SUPER ADMIN COMMAND ENGINE ===
       if (text && (await isSuperAdmin(from, chatId))) {
-        
+
         // Hide Keyboard Command
         if (text === '❌ Скрыть меню') {
           await callTelegram('sendMessage', {
@@ -315,23 +315,23 @@ export default async function handler(req, res) {
             chat_id: chatId,
             parse_mode: 'HTML',
             text: `⚡️ <b>TEDxSergeli SUPER ADMIN DASHBOARD & QR-СКАНЕР</b>\n\n` +
-                  `📱 <b>Входной контроль по QR-кодам:</b>\n` +
-                  `Нажмите кнопку ниже, чтобы открыть веб-сканер билетов прямо в Telegram!\n\n` +
-                  `👑 <b>Управление Администраторами:</b>\n` +
-                  `• <code>/add_admin @username</code> — Назначить Со-Администратора\n` +
-                  `• <code>/del_admin @username</code> — Снять Со-Администратора\n` +
-                  `• <code>/admins</code> — Список всех Администраторов (кнопка <b>👑 Админы</b>)\n\n` +
-                  `🎫 <b>Управление Контролерами Билетов:</b>\n` +
-                  `• <code>/add_scanner @username</code> — Назначить волонтера-контролера\n` +
-                  `• <code>/del_scanner @username</code> — Удалить контролера\n` +
-                  `• <code>/scanners</code> — Список контролеров (кнопка <b>📋 Контролеры</b>)\n\n` +
-                  `📊 <b>Мониторинг и База Данных:</b>\n` +
-                  `• <code>/stats</code> — Живая статистика билетов (кнопка <b>📊 Статистика</b>)\n` +
-                  `• <code>/reset_db</code> — Очистить все места и сбросить билеты\n` +
-                  `• <code>/find TEDX-849201</code> — Найти инфо о билете\n` +
-                  `• <code>/reset_ticket TEDX-849201</code> — Сбросить статус билета в VALID\n\n` +
-                  `📢 <b>Массовые Рассылки:</b>\n` +
-                  `• <code>/broadcast Ваш текст</code> — Отправить анонс всем пользователям бота`,
+              `📱 <b>Входной контроль по QR-кодам:</b>\n` +
+              `Нажмите кнопку ниже, чтобы открыть веб-сканер билетов прямо в Telegram!\n\n` +
+              `👑 <b>Управление Администраторами:</b>\n` +
+              `• <code>/add_admin @username</code> — Назначить Со-Администратора\n` +
+              `• <code>/del_admin @username</code> — Снять Со-Администратора\n` +
+              `• <code>/admins</code> — Список всех Администраторов (кнопка <b>👑 Админы</b>)\n\n` +
+              `🎫 <b>Управление Контролерами Билетов:</b>\n` +
+              `• <code>/add_scanner @username</code> — Назначить волонтера-контролера\n` +
+              `• <code>/del_scanner @username</code> — Удалить контролера\n` +
+              `• <code>/scanners</code> — Список контролеров (кнопка <b>📋 Контролеры</b>)\n\n` +
+              `📊 <b>Мониторинг и База Данных:</b>\n` +
+              `• <code>/stats</code> — Живая статистика билетов (кнопка <b>📊 Статистика</b>)\n` +
+              `• <code>/reset_db</code> — Очистить все места и сбросить билеты\n` +
+              `• <code>/find TEDX-849201</code> — Найти инфо о билете\n` +
+              `• <code>/reset_ticket TEDX-849201</code> — Сбросить статус билета в VALID\n\n` +
+              `📢 <b>Массовые Рассылки:</b>\n` +
+              `• <code>/broadcast Ваш текст</code> — Отправить анонс всем пользователям бота`,
             reply_markup: {
               inline_keyboard: [
                 [
@@ -401,8 +401,8 @@ export default async function handler(req, res) {
             chat_id: chatId,
             parse_mode: 'HTML',
             text: `👑 <b>СПИСОК АДМИНИСТРАТОРОВ TEDxSergeli:</b>\n\n` +
-                  `🥇 <b>Главный Админ:</b> <code>${SUPER_ADMIN_ID}</code>\n\n` +
-                  `👥 <b>Со-Администраторы:</b>\n${listStr}`,
+              `🥇 <b>Главный Админ:</b> <code>${SUPER_ADMIN_ID}</code>\n\n` +
+              `👥 <b>Со-Администраторы:</b>\n${listStr}`,
             reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
@@ -492,10 +492,10 @@ export default async function handler(req, res) {
             chat_id: chatId,
             parse_mode: 'HTML',
             text: `📊 <b>СТАТИСТИКА TEDxSergeli Specialized School:</b>\n\n` +
-                  `👥 <b>Пользователей в боте:</b> ${allUserIds.length}\n` +
-                  `🎟 <b>Продано билетов:</b> ${displaySold} / 200\n` +
-                  `⏳ <b>Временно забронировано мест:</b> ${occupiedSeats.length}\n` +
-                  `🟢 <b>Прошло через контроль (Вход):</b> ${scannedCount} человек`,
+              `👥 <b>Пользователей в боте:</b> ${allUserIds.length}\n` +
+              `🎟 <b>Продано билетов:</b> ${displaySold} / 200\n` +
+              `⏳ <b>Временно забронировано мест:</b> ${occupiedSeats.length}\n` +
+              `🟢 <b>Прошло через контроль (Вход):</b> ${scannedCount} человек`,
             reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
@@ -519,13 +519,13 @@ export default async function handler(req, res) {
             chat_id: chatId,
             parse_mode: 'HTML',
             text: `🔍 <b>ИНФОРМАЦИЯ О БИЛЕТЕ:</b>\n\n` +
-                  `🎟 <b>ID:</b> <code>${ticket.id}</code>\n` +
-                  `👤 <b>Гость:</b> ${ticket.name}\n` +
-                  `📱 <b>Тел:</b> <code>${ticket.phone}</code>\n` +
-                  `📍 <b>Ряд:</b> ${ticket.row} | <b>Место:</b> ${ticket.seat}\n` +
-                  `🔴 <b>Статус:</b> <b>${ticket.status.toUpperCase()}</b>\n` +
-                  `🕒 <b>Выдан:</b> ${new Date(ticket.confirmed_at).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}\n` +
-                  (ticket.used_at ? `🟢 <b>Отсканирован:</b> ${new Date(ticket.used_at).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })} (@${ticket.scanned_by})` : ''),
+              `🎟 <b>ID:</b> <code>${ticket.id}</code>\n` +
+              `👤 <b>Гость:</b> ${ticket.name}\n` +
+              `📱 <b>Тел:</b> <code>${ticket.phone}</code>\n` +
+              `📍 <b>Ряд:</b> ${ticket.row} | <b>Место:</b> ${ticket.seat}\n` +
+              `🔴 <b>Статус:</b> <b>${ticket.status.toUpperCase()}</b>\n` +
+              `🕒 <b>Выдан:</b> ${new Date(ticket.confirmed_at).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}\n` +
+              (ticket.used_at ? `🟢 <b>Отсканирован:</b> ${new Date(ticket.used_at).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })} (@${ticket.scanned_by})` : ''),
             reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
@@ -555,7 +555,7 @@ export default async function handler(req, res) {
                 text: `📢 <b>Официальное сообщение TEDxSergeli:</b>\n\n${broadcastMsg}`
               });
               if (r && r.ok) successCount++;
-            } catch {}
+            } catch { }
           }
 
           await callTelegram('sendMessage', {
@@ -582,8 +582,8 @@ export default async function handler(req, res) {
               chat_id: chatId,
               parse_mode: 'HTML',
               text: `⛔️ <b>RUXSAT YO'Q / ДОСТУП ОГРАНИЧЕН</b>\n\n` +
-                    `Вы не являетесь авторизованным контролёром TEDxSergeli.\n` +
-                    `Сканировать билеты на входе могут только зарегистрированные волонтеры и организаторы.`
+                `Вы не являетесь авторизованным контролёром TEDxSergeli.\n` +
+                `Сканировать билеты на входе могут только зарегистрированные волонтеры и организаторы.`
             });
             return res.status(200).json({ ok: true });
           }
@@ -611,11 +611,11 @@ export default async function handler(req, res) {
               chat_id: chatId,
               parse_mode: 'HTML',
               text: `🟢 <b>БИЛЕТ УСПЕШНО ПРОВЕРЕН! / CHIPTA TASDIQLANDI!</b>\n\n` +
-                    `👤 <b>Гость / Mehmon:</b> ${ticket.name || 'Noma\'lum'}\n` +
-                    `📱 <b>Тел:</b> <code>${ticket.phone || 'Noma\'lum'}</code>\n` +
-                    `📍 <b>Ряд / Qator:</b> ${ticket.row} | <b>Место / Joy:</b> ${ticket.seat}\n` +
-                    `🎟 <b>ID билета:</b> <code>${ticket.id}</code>\n\n` +
-                    `✅ <i>Статус билета изменен на: ИСПОЛЬЗОВАН (Вход разрешен).</i>`
+                `👤 <b>Гость / Mehmon:</b> ${ticket.name || 'Noma\'lum'}\n` +
+                `📱 <b>Тел:</b> <code>${ticket.phone || 'Noma\'lum'}</code>\n` +
+                `📍 <b>Ряд / Qator:</b> ${ticket.row} | <b>Место / Joy:</b> ${ticket.seat}\n` +
+                `🎟 <b>ID билета:</b> <code>${ticket.id}</code>\n\n` +
+                `✅ <i>Статус билета изменен на: ИСПОЛЬЗОВАН (Вход разрешен).</i>`
             });
           } else {
             const timeStr = ticket.used_at
@@ -626,20 +626,73 @@ export default async function handler(req, res) {
               chat_id: chatId,
               parse_mode: 'HTML',
               text: `⚠️ <b>ВНИМАНИЕ! БИЛЕТ УЖЕ ИСПОЛЬЗОВАН! / CHIPTA ALLAQACHON ISHLATILGAN!</b>\n\n` +
-                    `👤 <b>Гость / Mehmon:</b> ${ticket.name || 'Noma\'lum'}\n` +
-                    `📍 <b>Ряд / Qator:</b> ${ticket.row} | <b>Место / Joy:</b> ${ticket.seat}\n` +
-                    `🎟 <b>ID билета:</b> <code>${ticket.id}</code>\n` +
-                    `🕒 <b>Время первого входа:</b> ${timeStr}\n` +
-                    `👤 <b>Проверил:</b> @${ticket.scanned_by || 'Admin'}\n\n` +
-                    `🛑 <i>Повторный вход по данному билету запрещен.</i>`
+                `👤 <b>Гость / Mehmon:</b> ${ticket.name || 'Noma\'lum'}\n` +
+                `📍 <b>Ряд / Qator:</b> ${ticket.row} | <b>Место / Joy:</b> ${ticket.seat}\n` +
+                `🎟 <b>ID билета:</b> <code>${ticket.id}</code>\n` +
+                `🕒 <b>Время первого входа:</b> ${timeStr}\n` +
+                `👤 <b>Проверил:</b> @${ticket.scanned_by || 'Admin'}\n\n` +
+                `🛑 <i>Повторный вход по данному билету запрещен.</i>`
             });
           }
 
           return res.status(200).json({ ok: true });
         }
 
-        // Standard clean registration start
-        let user = { step: 'LANG', source: payload, payment_status: 'none' };
+        // Check existing user state
+        let existingUser = (await kv.get(`user:${chatId}`)) || {};
+
+        // If user already has a confirmed ticket, show their active ticket info
+        if (existingUser.payment_status === 'confirmed' && existingUser.ticketId) {
+          const userLang = existingUser.lang || 'ru';
+          const ticket = await kv.get(`ticket:${existingUser.ticketId}`);
+          const seatInfo = getSeatDetails(existingUser.seatNumber || (ticket ? ticket.seatNumber : 1));
+
+          let msg = '';
+          if (userLang === 'uz') {
+            msg = `🎉 <b>Hush kelibsiz! Sizda faol TEDxSergeli elektron chiptangiz bor.</b>\n\n` +
+                  `🎟 <b>Chipta ID:</b> <code>${existingUser.ticketId}</code>\n` +
+                  `📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin\n` +
+                  `👤 <b>Ism:</b> ${existingUser.name || 'Mehmon'}\n\n` +
+                  `📱 <i>Kirish joyida chiptangizdagi QR-kodni ko'rsatishingiz kifoya.</i>`;
+          } else if (userLang === 'en') {
+            msg = `🎉 <b>Welcome back! You have an active TEDxSergeli ticket.</b>\n\n` +
+                  `🎟 <b>Ticket ID:</b> <code>${existingUser.ticketId}</code>\n` +
+                  `📍 <b>Seat:</b> ${seatInfo.sectorName}, Row ${seatInfo.row} / Seat ${seatInfo.seat}\n` +
+                  `👤 <b>Name:</b> ${existingUser.name || 'Guest'}\n\n` +
+                  `📱 <i>Just show your QR code ticket at the entrance.</i>`;
+          } else {
+            msg = `🎉 <b>С возвращением! У вас есть активный электронный билет TEDxSergeli.</b>\n\n` +
+                  `🎟 <b>ID Билета:</b> <code>${existingUser.ticketId}</code>\n` +
+                  `📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место\n` +
+                  `👤 <b>Имя:</b> ${existingUser.name || 'Гость'}\n\n` +
+                  `📱 <i>На входе достаточно показать ваш QR-код билет.</i>`;
+          }
+
+          if (await isSuperAdmin(from, chatId)) {
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `👑 <b>Вы авторизованы как Super Admin TEDxSergeli!</b>\n\n${msg}`,
+              reply_markup: ADMIN_KEYBOARD
+            });
+          } else {
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: msg
+            });
+          }
+          return res.status(200).json({ ok: true });
+        }
+
+        // Standard registration start for new users
+        let user = {
+          ...existingUser,
+          chatId,
+          step: existingUser.step || 'LANG',
+          source: payload,
+          payment_status: existingUser.payment_status || 'none'
+        };
         await kv.set(`user:${chatId}`, user);
 
         if (await isSuperAdmin(from, chatId)) {
@@ -696,28 +749,28 @@ export default async function handler(req, res) {
             let msg = '';
             if (userLang === 'uz') {
               msg = `✅ <b>Joy tanlandi: #${seatNumber} (Sektor ${sector || 1}, ${row || 1}-qator / ${seat || 1}-o'rin)</b>\n\n` +
-                    `⏳ <b>Diqqat! Ushbu joy siz uchun 15 daqiqa davomida band qilinadi.</b>\n` +
-                    `Shu vaqt ichida to'lov chekini (скриншот) yuborishingiz kerak.\n\n` +
-                    `💳 <b>To'lov miqdori:</b> 49 999 UZS\n` +
-                    `💳 <b>Karta raqami:</b> <code>5614 6822 1091 3879</code>\n` +
-                    `👤 <b>Qabul qiluvchi:</b> Abidjanov Baxtiyor\n\n` +
-                    `📸 To'lovni amalga oshirgach, <b>chek (скриншот)</b>ni shu yerga yuboring.`;
+                `⏳ <b>Diqqat! Ushbu joy siz uchun 15 daqiqa davomida band qilinadi.</b>\n` +
+                `Shu vaqt ichida to'lov chekini (скриншот) yuborishingiz kerak.\n\n` +
+                `💳 <b>To'lov miqdori:</b> 49 999 UZS\n` +
+                `💳 <b>Karta raqami:</b> <code>5614 6822 1091 3879</code>\n` +
+                `👤 <b>Qabul qiluvchi:</b> Abidjanov Baxtiyor\n\n` +
+                `📸 To'lovni amalga oshirgach, <b>chek (скриншот)</b>ni shu yerga yuboring.`;
             } else if (userLang === 'en') {
               msg = `✅ <b>Seat selected: #${seatNumber} (Sector ${sector || 1}, Row ${row || 1} / Seat ${seat || 1})</b>\n\n` +
-                    `⏳ <b>Attention! This seat is reserved for 15 minutes.</b>\n` +
-                    `Please send the payment receipt screenshot within this time.\n\n` +
-                    `💳 <b>Amount:</b> 49,999 UZS\n` +
-                    `💳 <b>Card Number:</b> <code>5614 6822 1091 3879</code>\n` +
-                    `👤 <b>Recipient:</b> Abidjanov Baxtiyor\n\n` +
-                    `📸 After payment, please send the receipt screenshot here.`;
+                `⏳ <b>Attention! This seat is reserved for 15 minutes.</b>\n` +
+                `Please send the payment receipt screenshot within this time.\n\n` +
+                `💳 <b>Amount:</b> 49,999 UZS\n` +
+                `💳 <b>Card Number:</b> <code>5614 6822 1091 3879</code>\n` +
+                `👤 <b>Recipient:</b> Abidjanov Baxtiyor\n\n` +
+                `📸 After payment, please send the receipt screenshot here.`;
             } else {
               msg = `✅ <b>Место выбрано: №${seatNumber} (Сектор ${sector || 1}, ${row || 1}-ряд / ${seat || 1}-место)</b>\n\n` +
-                    `⏳ <b>Внимание! Это место забронировано за вами на 15 минут.</b>\n` +
-                    `Пожалуйста, отправьте чек об оплате в течение этого времени.\n\n` +
-                    `💳 <b>Сумма к оплате:</b> 49 999 UZS\n` +
-                    `💳 <b>Номер карты:</b> <code>5614 6822 1091 3879</code>\n` +
-                    `👤 <b>Получатель:</b> Abidjanov Baxtiyor\n\n` +
-                    `📸 После оплаты отправьте <b>скриншот чека</b> в этот чат.`;
+                `⏳ <b>Внимание! Это место забронировано за вами на 15 минут.</b>\n` +
+                `Пожалуйста, отправьте чек об оплате в течение этого времени.\n\n` +
+                `💳 <b>Сумма к оплате:</b> 49 999 UZS\n` +
+                `💳 <b>Номер карты:</b> <code>5614 6822 1091 3879</code>\n` +
+                `👤 <b>Получатель:</b> Abidjanov Baxtiyor\n\n` +
+                `📸 После оплаты отправьте <b>скриншот чека</b> в этот чат.`;
             }
 
             await callTelegram('sendMessage', {
@@ -741,7 +794,7 @@ export default async function handler(req, res) {
         user.name = text;
         user.step = 'PHONE';
         await kv.set(`user:${chatId}`, user);
-        
+
         const lang = user.lang || 'ru';
         await callTelegram('sendMessage', {
           chat_id: chatId,
@@ -792,28 +845,28 @@ export default async function handler(req, res) {
           let msg = '';
           if (lang === 'uz') {
             msg = `✅ <b>Siz uchun navbatdagi joy ajratildi: #${seatInfo.seatNumber}</b>\n` +
-                  `📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin\n\n` +
-                  `⏳ <b>Eslatma:</b> To'lov chekini yuborish uchun sizda <b>15 daqiqa</b> bor. Aks holda, ushbu joy boshqa ishtirokchilar uchun ochiladi.\n\n` +
-                  `💳 <b>To'lov miqdori:</b> 49 999 UZS\n` +
-                  `💳 <b>Karta raqami:</b> <code>5614 6822 1091 3879</code>\n` +
-                  `👤 <b>Qabul qiluvchi:</b> Abidjanov Baxtiyor\n\n` +
-                  `📸 To'lovni amalga oshirgach, <b>chek (скриншот)</b>ni shu yerga yuboring.`;
+              `📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin\n\n` +
+              `⏳ <b>Eslatma:</b> To'lov chekini yuborish uchun sizda <b>15 daqiqa</b> bor. Aks holda, ushbu joy boshqa ishtirokchilar uchun ochiladi.\n\n` +
+              `💳 <b>To'lov miqdori:</b> 49 999 UZS\n` +
+              `💳 <b>Karta raqami:</b> <code>5614 6822 1091 3879</code>\n` +
+              `👤 <b>Qabul qiluvchi:</b> Abidjanov Baxtiyor\n\n` +
+              `📸 To'lovni amalga oshirgach, <b>chek (скриншот)</b>ni shu yerga yuboring.`;
           } else if (lang === 'en') {
             msg = `✅ <b>Next available seat assigned to you: #${seatInfo.seatNumber}</b>\n` +
-                  `📍 <b>Seat:</b> ${seatInfo.sectorName}, Row ${seatInfo.row} / Seat ${seatInfo.seat}\n\n` +
-                  `⏳ <b>Notice:</b> You have <b>15 minutes</b> to send your payment receipt screenshot. Otherwise, your seat reservation will be released to other attendees.\n\n` +
-                  `💳 <b>Amount:</b> 49,999 UZS\n` +
-                  `💳 <b>Card Number:</b> <code>5614 6822 1091 3879</code>\n` +
-                  `👤 <b>Recipient:</b> Abidjanov Baxtiyor\n\n` +
-                  `📸 After payment, please send the receipt screenshot here.`;
+              `📍 <b>Seat:</b> ${seatInfo.sectorName}, Row ${seatInfo.row} / Seat ${seatInfo.seat}\n\n` +
+              `⏳ <b>Notice:</b> You have <b>15 minutes</b> to send your payment receipt screenshot. Otherwise, your seat reservation will be released to other attendees.\n\n` +
+              `💳 <b>Amount:</b> 49,999 UZS\n` +
+              `💳 <b>Card Number:</b> <code>5614 6822 1091 3879</code>\n` +
+              `👤 <b>Recipient:</b> Abidjanov Baxtiyor\n\n` +
+              `📸 After payment, please send the receipt screenshot here.`;
           } else {
             msg = `✅ <b>Вам выделено следующее место по очереди: №${seatInfo.seatNumber}</b>\n` +
-                  `📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место\n\n` +
-                  `⏳ <b>Внимание:</b> У вас есть <b>15 минут</b> на отправку чека об оплате. В противном случае забронированное место станет доступным для других участников.\n\n` +
-                  `💳 <b>Сумма к оплате:</b> 49 999 UZS\n` +
-                  `💳 <b>Номер карты:</b> <code>5614 6822 1091 3879</code>\n` +
-                  `👤 <b>Получатель:</b> Abidjanov Baxtiyor\n\n` +
-                  `📸 После оплаты отправьте <b>скриншот чека</b> в этот чат.`;
+              `📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место\n\n` +
+              `⏳ <b>Внимание:</b> У вас есть <b>15 минут</b> на отправку чека об оплате. В противном случае забронированное место станет доступным для других участников.\n\n` +
+              `💳 <b>Сумма к оплате:</b> 49 999 UZS\n` +
+              `💳 <b>Номер карты:</b> <code>5614 6822 1091 3879</code>\n` +
+              `👤 <b>Получатель:</b> Abidjanov Baxtiyor\n\n` +
+              `📸 После оплаты отправьте <b>скриншот чека</b> в этот чат.`;
           }
 
           await callTelegram('sendMessage', {
@@ -851,11 +904,11 @@ export default async function handler(req, res) {
             chat_id: targetAdminGroup,
             photo: photoFileId,
             caption: `📥 <b>YANGI TO'LOV CHEKI / НОВЫЙ ЧЕК ОБ ОПЛАТЕ!</b>\n\n` +
-                     `👤 <b>Ism / Имя:</b> ${user.name || 'Noma\'lum'}\n` +
-                     `📱 <b>Тел:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
-                     `📍 <b>Mavjud joy:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
-                     `🌐 <b>Til:</b> ${(user.lang || 'ru').toUpperCase()}\n` +
-                     `🆔 <b>User ID:</b> <code>${chatId}</code>`,
+              `👤 <b>Ism / Имя:</b> ${user.name || 'Noma\'lum'}\n` +
+              `📱 <b>Тел:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
+              `📍 <b>Mavjud joy:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
+              `🌐 <b>Til:</b> ${(user.lang || 'ru').toUpperCase()}\n` +
+              `🆔 <b>User ID:</b> <code>${chatId}</code>`,
             parse_mode: 'HTML',
             reply_markup: {
               inline_keyboard: [
@@ -880,7 +933,7 @@ export default async function handler(req, res) {
       // Handle Language Selection
       if (data.startsWith('lang_')) {
         const selectedLang = data.split('_')[1];
-        
+
         let user = {
           chatId,
           lang: selectedLang,
