@@ -46,12 +46,26 @@ const API_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
 // Production WebApp Domain (Prevents Vercel preview login wall)
 const PUBLIC_DOMAIN = process.env.PUBLIC_URL || 'https://tedxsergeli.vercel.app';
 
-// Super Admin Persistent Bottom Keyboard Menu
 const ADMIN_KEYBOARD = {
   keyboard: [
     [{ text: "📊 Статистика" }, { text: "📋 Контролеры" }],
     [{ text: "👑 Админы" }, { text: "ℹ️ Инструкция" }],
     [{ text: "❌ Скрыть меню" }]
+  ],
+  resize_keyboard: true,
+  persistent: true
+};
+
+// Controller / Ticket Scanner Persistent Bottom Keyboard Menu
+const SCANNER_KEYBOARD = {
+  keyboard: [
+    [
+      {
+        text: "📱 Входной QR-Сканер",
+        web_app: { url: `${PUBLIC_DOMAIN}/scanner` }
+      }
+    ],
+    [{ text: "🔍 Проверить билет по ID" }, { text: "📖 Инструкция контролера" }]
   ],
   resize_keyboard: true,
   persistent: true
@@ -568,6 +582,38 @@ export default async function handler(req, res) {
         }
       }
 
+      // === CONTROLLER / SCANNER VOLUNTEER COMMAND ENGINE ===
+      if (text && (await isAuthorizedScanner(from, chatId))) {
+        if (text === '📖 Инструкция контролера' || text === '/scanner_help') {
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: `📖 <b>ИНСТРУКЦИЯ ДЛЯ КОНТРОЛЁРОВ TEDxSergeli:</b>\n\n` +
+                  `1️⃣ <b>Проверка через QR-сканер:</b>\n` +
+                  `• Нажмите кнопку <b>📱 Входной QR-Сканер</b> внизу.\n` +
+                  `• Наведите камеру на QR-код на билете гостя.\n` +
+                  `• Зелёный экран = ГОСТЬ ПРОПУЩЕН ✅\n` +
+                  `• Красный экран = БИЛЕТ УЖЕ ИСПОЛЬЗОВАН 🛑\n\n` +
+                  `2️⃣ <b>Проверка вручную (без QR):</b>\n` +
+                  `• Отправьте боту <code>/find ID</code> (например, <code>/find 947695</code>).\n` +
+                  `• Или нажмите <b>🔍 Проверить билет по ID</b>.\n` +
+                  `• Бот покажет статус билета, ФИО гостя и место.`,
+            reply_markup: SCANNER_KEYBOARD
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        if (text === '🔍 Проверить билет по ID' || text === '/control') {
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: `🔍 <b>Проверка билета по ID:</b>\n\nОтправьте команду в формате:\n<code>/find ID_БИЛЕТА</code>\n\nПример: <code>/find TEDX-947695</code> или <code>/find 947695</code>`,
+            reply_markup: SCANNER_KEYBOARD
+          });
+          return res.status(200).json({ ok: true });
+        }
+      }
+
       // Handle /start command (Normal registration or QR scanner deep link)
       if (text && text.startsWith('/start')) {
         const payload = text.split(' ')[1] || 'direct';
@@ -682,6 +728,25 @@ export default async function handler(req, res) {
               text: msg
             });
           }
+          return res.status(200).json({ ok: true });
+        }
+
+        // Check if user is an authorized ticket controller/scanner
+        if (await isAuthorizedScanner(from, chatId) && !(await isSuperAdmin(from, chatId))) {
+          const volunteerName = from ? (from.first_name || from.username || 'Kontroler') : 'Kontroler';
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: `🎫 <b>Hush kelibsiz, ${volunteerName}! / Здравствуйте!</b>\n\n` +
+                  `✅ <b>Siz TEDxSergeli rasmiy chipta nazoratchisisiz (Контролёр).</b>\n` +
+                  `Вам открыт доступ к входному контролю билетов на мероприятии.\n\n` +
+                  `📌 <b>Как проверять билеты:</b>\n` +
+                  `1️⃣ Нажмите кнопку <b>📱 Входной QR-Сканер</b> внизу, чтобы открыть сканер прямо в Telegram.\n` +
+                  `2️⃣ Наведите камеру на QR-код участника.\n` +
+                  `3️⃣ Если QR-код не сканируется, используйте кнопку <b>🔍 Проверить по ID</b> или команду <code>/find ID</code>.\n\n` +
+                  `<i>Успешной работы на мероприятии!</i>`,
+            reply_markup: SCANNER_KEYBOARD
+          });
           return res.status(200).json({ ok: true });
         }
 
