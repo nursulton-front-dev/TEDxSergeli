@@ -7,7 +7,7 @@ export const translations = {
     speakers: { uz: 'Spikerlar', ru: 'Спикеры', en: 'Speakers' },
     schedule: { uz: 'Dastur', ru: 'Программа', en: 'Schedule' },
     team: { uz: 'Jamoa', ru: 'Команда', en: 'Team' },
-    apply: { uz: 'Ariza', ru: 'Подать заявку', en: 'Apply' },
+    apply: { uz: 'Chipta olish', ru: 'Купить билет', en: 'Get Tickets' },
     themeToggle: { uz: 'Mavzuni almashtirish', ru: 'Переключить тему', en: 'Toggle theme' },
   },
   hero: {
@@ -32,7 +32,7 @@ export const translations = {
       en: 'Sergeli Specialized School',
     },
     locationLink: 'https://yandex.uz/maps/-/CTv~EDnZ',
-    applyBtn: { uz: 'Ariza topshirish', ru: 'Подать заявку', en: 'Apply Now' },
+    applyBtn: { uz: 'Chipta xarid qilish', ru: 'Купить билет', en: 'Get Tickets' },
     learnMore: { uz: "Batafsil", ru: 'Подробнее', en: 'Learn More' },
   },
   whatIsTedx: {
@@ -280,12 +280,12 @@ export const translations = {
   tickets: {
     title: { uz: 'Qatnashmoqchimisiz?', ru: 'Хотите участвовать?', en: 'Want to participate?' },
     desc: { 
-      uz: "To'laydigan pulingiz faqatgina shu tadbirni yaxshiroq o'tkazishga ishlatilinadi. Ya'ni o'zingizga o'zingiz to'layapsiz 😊", 
-      ru: 'Ваши средства пойдут исключительно на улучшение этого мероприятия. По сути, вы инвестируете в себя 😊', 
-      en: 'Your payment will be used solely to make this event better. You are basically investing in yourself 😊' 
+      uz: "Siz o'z qulayligingiz uchun to'layapsiz 😊. Ulgurib qoling, joylar soni cheklangan!", 
+      ru: 'Вы платите за своё удобство 😊. Успейте, количество мест ограничено!', 
+      en: 'You are paying for your own convenience 😊. Hurry up, seats are limited!' 
     },
     priceLabel: { uz: 'Chipta narxi:', ru: 'Стоимость билета:', en: 'Ticket price:' },
-    price: { uz: '50 000 UZS', ru: '50 000 UZS', en: '50 000 UZS' },
+    price: { uz: '49 999 UZS', ru: '49 999 UZS', en: '49 999 UZS' },
     ctaBtn: { uz: 'Telegram orqali xarid qilish', ru: 'Купить через Telegram', en: 'Buy via Telegram' },
     time: {
       days: { uz: 'kun', ru: 'дней', en: 'days' },

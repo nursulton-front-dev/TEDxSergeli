@@ -95,7 +95,7 @@ export default function Navbar() {
               </button>
 
               <a
-                href="#apply"
+                href="#tickets"
                 className="ml-1 px-6 py-2.5 bg-ted-red text-white text-sm font-semibold rounded hover:bg-ted-red-dark transition-colors duration-200"
               >
                 {t.apply[lang]}
@@ -181,7 +181,7 @@ export default function Navbar() {
                   </motion.a>
                 ))}
                 <motion.a
-                  href="#apply"
+                  href="#tickets"
                   onClick={() => setMobileOpen(false)}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}

@@ -121,7 +121,7 @@ export default function Hero() {
           className="mt-10 flex flex-wrap items-center justify-center gap-4"
         >
           <a
-            href="#apply"
+            href="#tickets"
             className="px-8 py-3.5 bg-ted-red text-white font-semibold rounded hover:bg-ted-red-dark transition-all duration-300 hover:shadow-lg hover:shadow-ted-red/20"
           >
             {t.applyBtn[lang]}
