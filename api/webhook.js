@@ -510,8 +510,8 @@ export default async function handler(req, res) {
           return res.status(200).json({ ok: true });
         }
 
-        // Statistics
-        if (text === '/stats' || text === '📊 Статистика') {
+        // Statistics & Live Monitoring (Idea 4)
+        if (text === '/stats' || text === '📊 Статистика' || text === '/live_stats') {
           const totalSold = parseInt((await kv.get('total_tickets_sold')) || 0, 10);
           const allocatedSeats = (await kv.get('allocated_seats')) || [];
           const allTicketIds = (await kv.get('all_ticket_ids')) || [];
@@ -527,19 +527,82 @@ export default async function handler(req, res) {
           let scannedCount = 0;
           for (const tid of allTicketIds) {
             const t = await kv.get(`ticket:${tid}`);
-            if (t && t.status === 'used') scannedCount++;
+            if (t && (t.status === 'used' || t.is_checked_in)) scannedCount++;
           }
+
+          const currentTashkentTime = new Intl.DateTimeFormat('uz-UZ', {
+            timeZone: 'Asia/Tashkent',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          }).format(new Date());
+
+          const entryPercent = displaySold > 0 ? Math.round((scannedCount / displaySold) * 100) : 0;
 
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `📊 <b>СТАТИСТИКА TEDxSergeli Specialized School:</b>\n\n` +
-              `👥 <b>Пользователей в боте:</b> ${allUserIds.length}\n` +
-              `🎟 <b>Продано билетов:</b> ${displaySold} / 200\n` +
-              `⏳ <b>Временно забронировано мест:</b> ${occupiedSeats.length}\n` +
-              `🟢 <b>Прошло через контроль (Вход):</b> ${scannedCount} человек`,
+            text: `📊 <b>TEDxSergeli LIVE MONITORING & STATISTIKA:</b>\n\n` +
+              `👥 <b>Botdagi foydalanuvchilar:</b> ${allUserIds.length} ta\n` +
+              `🎟 <b>Sotilgan chiptalar:</b> ${displaySold} / 200\n` +
+              `⏳ <b>Vaqtincha band qilingan joylar:</b> ${occupiedSeats.length}\n\n` +
+              `🟢 <b>Tadbirga kirganlar (Checked In):</b> <b>${scannedCount} ta (${entryPercent}%)</b>\n` +
+              `⏳ <b>Kirishi kutilayotganlar:</b> <b>${displaySold - scannedCount} ta</b>\n\n` +
+              `🕒 <b>Vaqt (Toshkent vaqti UTC+5):</b> <code>${currentTashkentTime}</code>`,
             reply_markup: ADMIN_KEYBOARD
           });
+          return res.status(200).json({ ok: true });
+        }
+
+        // Export CSV Command (Idea 1)
+        if (text === '/export' || text === '/export_csv') {
+          const allTicketIds = (await kv.get('all_ticket_ids')) || [];
+          let csvRows = ['Chipta_ID,Ism,Telefon,Sektor,Qator,Orin,Holati,Berilgan_Vaqti_UTC5,Kirgan_Vaqti_UTC5'];
+
+          for (const tid of allTicketIds) {
+            const t = await kv.get(`ticket:${tid}`);
+            if (t) {
+              const name = `"${(t.name || 'Mehmon').replace(/"/g, '""')}"`;
+              const phone = `"${(t.phone || 'Noma\'lum').replace(/"/g, '""')}"`;
+              const sector = `"${t.sectorName || 'Sektor 1'}"`;
+              const status = (t.status === 'used' || t.is_checked_in) ? 'ISHLATILGAN (Kirdi)' : 'FAOL (Kirmadi)';
+              const confirmedAt = t.confirmed_at
+                ? new Intl.DateTimeFormat('uz-UZ', { timeZone: 'Asia/Tashkent', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(t.confirmed_at))
+                : '-';
+              const checkedInAt = t.tashkentTime || (t.used_at
+                ? new Intl.DateTimeFormat('uz-UZ', { timeZone: 'Asia/Tashkent', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(t.used_at))
+                : '-');
+
+              csvRows.push(`${t.id || tid},${name},${phone},${sector},${t.row || 1},${t.seat || 1},${status},${confirmedAt},${checkedInAt}`);
+            }
+          }
+
+          const csvBuffer = Buffer.from(csvRows.join('\n'), 'utf-8');
+
+          try {
+            const formData = new FormData();
+            formData.append('chat_id', chatId);
+            formData.append('caption', `📊 <b>TEDxSergeli Chiptalar Ro'yxati (CSV / Excel)</b>\n\nJami chiptalar: <b>${allTicketIds.length} ta</b>\nVaqt mintaqasi: <b>UTC+5 (Toshkent vaqti)</b>`);
+            formData.append('parse_mode', 'HTML');
+            formData.append('document', new Blob([csvBuffer], { type: 'text/csv' }), 'tedx_sergeli_tickets.csv');
+
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+              method: 'POST',
+              body: formData
+            });
+          } catch (expErr) {
+            console.error('Failed to send CSV document:', expErr);
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `📄 <b>CSV MA'LUMOTLAR:</b>\n\n<pre>${csvRows.slice(0, 15).join('\n')}</pre>`,
+              reply_markup: ADMIN_KEYBOARD
+            });
+          }
+
           return res.status(200).json({ ok: true });
         }
 
@@ -557,30 +620,33 @@ export default async function handler(req, res) {
             return res.status(200).json({ ok: true });
           }
 
+          const formattedCreated = ticket.confirmed_at ? new Intl.DateTimeFormat('uz-UZ', { timeZone: 'Asia/Tashkent', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(ticket.confirmed_at)) : 'Noma\'lum';
+          const formattedUsed = ticket.tashkentTime || (ticket.used_at ? new Intl.DateTimeFormat('uz-UZ', { timeZone: 'Asia/Tashkent', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(ticket.used_at)) : null);
+
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `🔍 <b>ИНФОРМАЦИЯ О БИЛЕТЕ:</b>\n\n` +
+            text: `🔍 <b>CHIPTA HAQIDA MA'LUMOT:</b>\n\n` +
               `🎟 <b>ID:</b> <code>${ticket.id}</code>\n` +
-              `👤 <b>Гость:</b> ${ticket.name}\n` +
-              `📱 <b>Тел:</b> <code>${ticket.phone}</code>\n` +
-              `📍 <b>Ряд:</b> ${ticket.row} | <b>Место:</b> ${ticket.seat}\n` +
-              `🔴 <b>Статус:</b> <b>${ticket.status.toUpperCase()}</b>\n` +
-              `🕒 <b>Выдан:</b> ${new Date(ticket.confirmed_at).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}\n` +
-              (ticket.used_at ? `🟢 <b>Отсканирован:</b> ${new Date(ticket.used_at).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })} (@${ticket.scanned_by})` : ''),
+              `👤 <b>Mehmon:</b> ${ticket.name}\n` +
+              `📱 <b>Tel:</b> <code>${ticket.phone}</code>\n` +
+              `📍 <b>Sektor:</b> ${ticket.sectorName || 'Sektor 1'} | <b>Qator:</b> ${ticket.row} | <b>O'rin:</b> ${ticket.seat}\n` +
+              `🔴 <b>Holati:</b> <b>${(ticket.status || 'valid').toUpperCase()}</b>\n` +
+              `🕒 <b>Berilgan vaqti (UTC+5):</b> ${formattedCreated}\n` +
+              (formattedUsed ? `🟢 <b>Skanerlangan vaqti (UTC+5):</b> ${formattedUsed} (${ticket.checkedInBy || 'scanned'})` : ''),
             reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
 
-        // Broadcast
+        // Broadcast (Idea 2)
         if (text.startsWith('/broadcast')) {
           const broadcastMsg = text.replace('/broadcast', '').trim();
           if (!broadcastMsg) {
             await callTelegram('sendMessage', {
               chat_id: chatId,
               parse_mode: 'HTML',
-              text: `⚠️ <b>Использование:</b> <code>/broadcast Ваш текст анонса</code>`,
+              text: `⚠️ <b>Foydalanish:</b> <code>/broadcast E'lon matni</code>`,
               reply_markup: ADMIN_KEYBOARD
             });
             return res.status(200).json({ ok: true });
@@ -594,16 +660,23 @@ export default async function handler(req, res) {
               const r = await callTelegram('sendMessage', {
                 chat_id: uid,
                 parse_mode: 'HTML',
-                text: `📢 <b>Официальное сообщение TEDxSergeli:</b>\n\n${broadcastMsg}`
+                text: `📢 <b>TEDxSergeli Rasmiy E'lon:</b>\n\n${broadcastMsg}`
               });
               if (r && r.ok) successCount++;
             } catch { }
           }
 
+          const currentTashkentTime = new Intl.DateTimeFormat('uz-UZ', {
+            timeZone: 'Asia/Tashkent',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          }).format(new Date());
+
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `🚀 <b>Рассылка завершена!</b>\n\nУспешно доставлено <b>${successCount} / ${allUserIds.length}</b> пользователям.`,
+            text: `🚀 <b>E'lon tarqatildi!</b>\n\nMuvaffaqiyatli yetib bordi: <b>${successCount} / ${allUserIds.length}</b> foydalanuvchiga.\nVaqt: <b>${currentTashkentTime} (UTC+5)</b>`,
             reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });

@@ -130,27 +130,41 @@ function getSeatDetails(seatNumber) {
     }
 
     if (ticket.status === 'used' || ticket.is_checked_in) {
-      const checkedTime = ticket.used_at || ticket.checkedInAt
-        ? new Date(ticket.used_at || ticket.checkedInAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-        : 'Ilgari';
+      const checkedTime = ticket.tashkentTime || (ticket.used_at || ticket.checkedInAt
+        ? new Intl.DateTimeFormat('uz-UZ', { timeZone: 'Asia/Tashkent', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(ticket.used_at || ticket.checkedInAt))
+        : 'Ilgari');
+
+      const checkedByStr = ticket.checkedInBy ? ` (@${ticket.checkedInBy})` : '';
 
       return res.status(409).json({
         success: false,
         reason: 'already_used',
-        message: `Chipta allaqachon ishlatilgan! (Kirish vaqti: ${checkedTime})`,
+        message: `❌ CHIPTA ISHLATILGAN! Kirgan vaqti: ${checkedTime}${checkedByStr}`,
         guest: ticket.name,
         seat: ticket.seatNumber || ticket.seat,
         sector: ticket.sector || ticket.row,
-        checkedInAt: ticket.used_at || ticket.checkedInAt
+        checkedInAt: checkedTime
       });
     }
 
     // Mark as Checked In / Used
-    const nowIso = new Date().toISOString();
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const tashkentTimeStr = new Intl.DateTimeFormat('uz-UZ', {
+      timeZone: 'Asia/Tashkent',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).format(now);
+
     ticket.status = 'used';
     ticket.is_checked_in = true;
     ticket.checkedInAt = nowIso;
     ticket.used_at = nowIso;
+    ticket.tashkentTime = tashkentTimeStr;
     ticket.checkedInBy = volunteerId || 'scanner_app';
 
     await kv.set(`ticket:${cleanTicketId}`, ticket);
