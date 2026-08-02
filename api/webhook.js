@@ -301,32 +301,50 @@ export default async function handler(req, res) {
         }
 
         // Database Reset Command (/reset_db or /clear_db)
-        if (text === '/reset_db' || text === '/clear_db') {
-          const allTicketIds = (await kv.get('all_ticket_ids')) || [];
-          if (Array.isArray(allTicketIds)) {
-            for (const tid of allTicketIds) {
-              await kv.set(`ticket:${tid}`, null);
+        if (text.startsWith('/reset_db') || text.startsWith('/clear_db')) {
+          if (text.includes('force')) {
+            const allTicketIds = (await kv.get('all_ticket_ids')) || [];
+            if (Array.isArray(allTicketIds)) {
+              for (const tid of allTicketIds) {
+                await kv.set(`ticket:${tid}`, null);
+              }
             }
+
+            const allUserIds = (await kv.get('all_user_ids')) || [];
+            if (Array.isArray(allUserIds)) {
+              for (const uid of allUserIds) {
+                await kv.set(`user:${uid}`, null);
+              }
+            }
+
+            await kv.set('occupied_seats', []);
+            await kv.set('allocated_seats', []);
+            await kv.set('total_tickets_sold', 0);
+            await kv.set('all_ticket_ids', []);
+            await kv.set('all_user_ids', []);
+
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `✅ <b>BAZA TO'LIQ TOZALANDI! / БАЗА ОЧИЩЕНА!</b>\nBarcha chiptalar, band qilingan joylar va foydalanuvchilar nollashtirildi (0/200).`,
+              reply_markup: ADMIN_KEYBOARD
+            });
+            return res.status(200).json({ ok: true });
           }
 
-          const allUserIds = (await kv.get('all_user_ids')) || [];
-          if (Array.isArray(allUserIds)) {
-            for (const uid of allUserIds) {
-              await kv.set(`user:${uid}`, null);
-            }
-          }
-
-          await kv.set('occupied_seats', []);
-          await kv.set('allocated_seats', []);
-          await kv.set('total_tickets_sold', 0);
-          await kv.set('all_ticket_ids', []);
-          await kv.set('all_user_ids', []);
-
+          // Ask for confirmation
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `✅ <b>База данных очищена!</b>\nВсе забронированные места, билеты и профили пользователей сброшены (0/200).`,
-            reply_markup: ADMIN_KEYBOARD
+            text: `⚠️ <b>DIQQAT! Baza ma'lumotlarini nolga tushirmoqchimisiz?</b>\n\nUshbu amal barcha sotilgan chiptalarni, band qilingan joylarni va foydalanuvchi ma'lumotlarini butunlay o'chirib tashlaydi (0/200).`,
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: "🔥 Ha, bazani tozalash", callback_data: "confirm_reset_db" },
+                  { text: "❌ Bekor qilish", callback_data: "cancel_reset_db" }
+                ]
+              ]
+            }
           });
           return res.status(200).json({ ok: true });
         }
@@ -1102,6 +1120,45 @@ export default async function handler(req, res) {
           text: texts.askName[selectedLang]
         });
 
+        await callTelegram('answerCallbackQuery', { callback_query_id: id });
+      if (data === 'confirm_reset_db') {
+        const allTicketIds = (await kv.get('all_ticket_ids')) || [];
+        if (Array.isArray(allTicketIds)) {
+          for (const tid of allTicketIds) {
+            await kv.set(`ticket:${tid}`, null);
+          }
+        }
+
+        const allUserIds = (await kv.get('all_user_ids')) || [];
+        if (Array.isArray(allUserIds)) {
+          for (const uid of allUserIds) {
+            await kv.set(`user:${uid}`, null);
+          }
+        }
+
+        await kv.set('occupied_seats', []);
+        await kv.set('allocated_seats', []);
+        await kv.set('total_tickets_sold', 0);
+        await kv.set('all_ticket_ids', []);
+        await kv.set('all_user_ids', []);
+
+        await callTelegram('editMessageText', {
+          chat_id: message.chat.id,
+          message_id: message.message_id,
+          parse_mode: 'HTML',
+          text: `✅ <b>BAZA TO'LIQ TOZALANDI! / БАЗА ОЧИЩЕНА!</b>\nBarcha chiptalar, band qilingan joylar va foydalanuvchilar nollashtirildi (0/200).`
+        });
+        await callTelegram('answerCallbackQuery', { callback_query_id: id });
+        return res.status(200).json({ ok: true });
+      }
+
+      if (data === 'cancel_reset_db') {
+        await callTelegram('editMessageText', {
+          chat_id: message.chat.id,
+          message_id: message.message_id,
+          parse_mode: 'HTML',
+          text: `❌ <b>Bazani tozalash bekor qilindi. / Очистка отменена.</b>`
+        });
         await callTelegram('answerCallbackQuery', { callback_query_id: id });
         return res.status(200).json({ ok: true });
       }
