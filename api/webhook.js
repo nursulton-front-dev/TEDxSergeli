@@ -1194,6 +1194,9 @@ export default async function handler(req, res) {
         });
 
         await callTelegram('answerCallbackQuery', { callback_query_id: id });
+        return res.status(200).json({ ok: true });
+      }
+
       if (data === 'confirm_reset_db') {
         const allTicketIds = (await kv.get('all_ticket_ids')) || [];
         if (Array.isArray(allTicketIds)) {
