@@ -11,11 +11,12 @@ export default async function handler(req, res) {
   }
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const chatIds = (process.env.TELEGRAM_CHAT_IDS ?? '')
+  const rawChatIds = process.env.TELEGRAM_CHAT_IDS || process.env.ADMIN_CHAT_ID || '';
+  const chatIds = rawChatIds
     .split(',')
     .map((id) => id.trim())
     .filter(Boolean);
-  const threadId = process.env.TELEGRAM_VOLUNTEER_THREAD_ID;
+  const threadId = process.env.TELEGRAM_VOLUNTEER_THREAD_ID || '2';
 
   if (!botToken || chatIds.length === 0) {
     console.error('TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_IDS is not configured');

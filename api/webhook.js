@@ -1061,8 +1061,9 @@ export default async function handler(req, res) {
             }
           };
 
-          if (VOLUNTEER_THREAD_ID) {
-            receiptPayload.message_thread_id = parseInt(VOLUNTEER_THREAD_ID, 10);
+          const targetTicketThread = TICKET_THREAD_ID || '4';
+          if (targetTicketThread) {
+            receiptPayload.message_thread_id = parseInt(targetTicketThread, 10);
           }
 
           await callTelegram('sendPhoto', receiptPayload);
@@ -1243,8 +1244,7 @@ export default async function handler(req, res) {
             });
           }
 
-          // Duplicate Ticket photo to Admin Group Topic ("Tickets")
-          const TICKETS_TOPIC_ID = process.env.TELEGRAM_TICKET_THREAD_ID || process.env.TOPIC_ID_TICKETS || process.env.TICKETS_TOPIC_ID || process.env.ADMIN_TOPIC_ID || TICKET_THREAD_ID || '4';
+          // Duplicate Confirmed Ticket photo to General Group Chat
           if (ADMIN_CHAT_ID) {
             const groupTicketCaption =
               `🎟️ <b>YANGI CHIPTA SOTILDI!</b>\n\n` +
@@ -1255,24 +1255,18 @@ export default async function handler(req, res) {
               `💳 <b>Summa:</b> 49,999 UZS\n` +
               `✅ <b>Tasdiqladi:</b> @${adminUsername}`;
 
-            const extraOpts = {};
-            if (TICKETS_TOPIC_ID) {
-              extraOpts.message_thread_id = parseInt(TICKETS_TOPIC_ID, 10);
-            }
-
             try {
               if (photoBuffer) {
-                await callTelegramPhoto(ADMIN_CHAT_ID, photoBuffer, groupTicketCaption, extraOpts);
+                await callTelegramPhoto(ADMIN_CHAT_ID, photoBuffer, groupTicketCaption);
               } else {
                 await callTelegram('sendMessage', {
                   chat_id: ADMIN_CHAT_ID,
                   parse_mode: 'HTML',
-                  text: groupTicketCaption,
-                  ...extraOpts
+                  text: groupTicketCaption
                 });
               }
             } catch (dupErr) {
-              console.error('Failed to duplicate ticket to admin group:', dupErr);
+              console.error('Failed to duplicate ticket to general group:', dupErr);
             }
           }
 
