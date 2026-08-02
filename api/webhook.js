@@ -1025,7 +1025,7 @@ export default async function handler(req, res) {
           user.payment_status = 'confirmed';
           await kv.set(`user:${userId}`, user);
 
-          const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'TEDxSergeliBot';
+          const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'TEDxSergeliSpecializedSchool_bot';
           const qrUrl = `https://t.me/${botUsername}?start=scan_${ticketId}`;
 
           // Generate PNG QR code image
