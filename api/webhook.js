@@ -1044,18 +1044,18 @@ export default async function handler(req, res) {
           const receiptPayload = {
             chat_id: targetAdminGroup,
             photo: photoFileId,
-            caption: `📥 <b>YANGI TO'LOV CHEKI / НОВЫЙ ЧЕК ОБ ОПЛАТЕ!</b>\n\n` +
-              `👤 <b>Ism / Имя:</b> ${user.name || 'Noma\'lum'}\n` +
-              `📱 <b>Тел:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
+            caption: `📥 <b>YANGI TO'LOV CHEKI!</b>\n\n` +
+              `👤 <b>Ism:</b> ${user.name || 'Noma\'lum'}\n` +
+              `📱 <b>Tel:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
               `📍 <b>Mavjud joy:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
-              `🌐 <b>Til:</b> ${(user.lang || 'ru').toUpperCase()}\n` +
+              `🌐 <b>Til:</b> ${(user.lang || 'uz').toUpperCase()}\n` +
               `🆔 <b>User ID:</b> <code>${chatId}</code>`,
             parse_mode: 'HTML',
             reply_markup: {
               inline_keyboard: [
                 [
-                  { text: "✅ Tasdiqlash (Подтвердить)", callback_data: `confirm_${chatId}` },
-                  { text: "❌ Rad etish (Отклонить)", callback_data: `reject_${chatId}` }
+                  { text: "✅ Tasdiqlash", callback_data: `confirm_${chatId}` },
+                  { text: "❌ Rad etish", callback_data: `reject_${chatId}` }
                 ]
               ]
             }
@@ -1247,13 +1247,13 @@ export default async function handler(req, res) {
           const TICKETS_TOPIC_ID = process.env.TELEGRAM_TICKET_THREAD_ID || process.env.TOPIC_ID_TICKETS || process.env.TICKETS_TOPIC_ID || process.env.ADMIN_TOPIC_ID || TICKET_THREAD_ID || '4';
           if (ADMIN_CHAT_ID) {
             const groupTicketCaption =
-              `🎟️ <b>YANGI CHIPTA SOTILDI / НОВЫЙ БИЛЕТ КУПЛЕН!</b>\n\n` +
-              `👤 <b>Имя / Ism:</b> ${user.name || 'Mehmon'}\n` +
-              `📍 <b>Место / Joy:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
-              `📱 <b>Телефон / Telegram:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
+              `🎟️ <b>YANGI CHIPTA SOTILDI!</b>\n\n` +
+              `👤 <b>Ism:</b> ${user.name || 'Mehmon'}\n` +
+              `📍 <b>Joy:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
+              `📱 <b>Tel / Telegram:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
               `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n` +
-              `💳 <b>Сумма:</b> 49,999 UZS\n` +
-              `✅ <b>Одобрил:</b> @${adminUsername}`;
+              `💳 <b>Summa:</b> 49,999 UZS\n` +
+              `✅ <b>Tasdiqladi:</b> @${adminUsername}`;
 
             const extraOpts = {};
             if (TICKETS_TOPIC_ID) {
@@ -1280,7 +1280,7 @@ export default async function handler(req, res) {
             chat_id: message.chat.id,
             message_id: message.message_id,
             parse_mode: 'HTML',
-            caption: `${message.caption || ''}\n\n✅ <b>TASDIQLANDI (CHIPTA BERILDI)</b>\nID: <code>${ticketId}</code> | ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\nTekshirdi: @${adminUsername}`,
+            caption: `${message.caption || ''}\n\n✅ <b>TASDIQLANDI (CHIPTA YUBORILDI)</b>\nID: <code>${ticketId}</code> | ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\nTasdiqladi: @${adminUsername}`,
             reply_markup: { inline_keyboard: [] }
           });
         } else if (action === 'reject') {
@@ -1297,7 +1297,7 @@ export default async function handler(req, res) {
             chat_id: message.chat.id,
             message_id: message.message_id,
             parse_mode: 'HTML',
-            caption: `${message.caption || ''}\n\n❌ <b>RAD ETILDI / ОТКЛОНЕНО</b>\nRad etdi: @${adminUsername}`,
+            caption: `${message.caption || ''}\n\n❌ <b>RAD ETILDI</b>\nRad etdi: @${adminUsername}`,
             reply_markup: { inline_keyboard: [] }
           });
         }
