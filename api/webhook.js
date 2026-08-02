@@ -1,4 +1,3 @@
-import { Resvg } from '@resvg/resvg-js';
 import QRCode from 'qrcode';
 
 const KV_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
@@ -43,6 +42,9 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
 const SUPER_ADMIN_ID = '6804139305'; // Founder Telegram ID
 const API_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
+
+// Production WebApp Domain (Prevents Vercel preview login wall)
+const PUBLIC_DOMAIN = process.env.PUBLIC_URL || 'https://tedxsergeli.vercel.app';
 
 // Super Admin Persistent Bottom Keyboard Menu
 const ADMIN_KEYBOARD = {
@@ -105,17 +107,22 @@ async function trackTicket(ticketId) {
   }
 }
 
-// Helper to call Telegram JSON API
+// Telegram API Helper
 async function callTelegram(method, body) {
-  const response = await fetch(`${API_URL}/${method}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  return response.json();
+  try {
+    const response = await fetch(`${API_URL}/${method}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    return response.json();
+  } catch (err) {
+    console.error(`Telegram API Call Error (${method}):`, err);
+    return null;
+  }
 }
 
-// Helper to send PNG Photo via FormData
+// Send Photo via FormData for Buffer upload
 async function callTelegramPhoto(chatId, buffer, caption, extra = {}) {
   try {
     const formData = new FormData();
@@ -131,7 +138,7 @@ async function callTelegramPhoto(chatId, buffer, caption, extra = {}) {
     }
 
     const blob = new Blob([buffer], { type: 'image/png' });
-    formData.append('photo', blob, 'ticket.png');
+    formData.append('photo', blob, 'ticket_qr.png');
 
     const response = await fetch(`${API_URL}/sendPhoto`, {
       method: 'POST',
@@ -144,16 +151,19 @@ async function callTelegramPhoto(chatId, buffer, caption, extra = {}) {
   }
 }
 
-function escapeXml(str) {
-  return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+// Generate pure high-resolution QR code PNG image
+async function generateTicketQrImage(qrUrl) {
+  return await QRCode.toBuffer(qrUrl, {
+    margin: 2,
+    width: 800,
+    color: {
+      dark: '#0E0E11',
+      light: '#FFFFFF'
+    }
+  });
 }
 
-// Seat Allocation helper for 200 total seats (4 sectors x 48 seats on Floor 1 + 8 balcony seats on Floor 2)
+// Seat Allocation helper for 200 total seats
 function getSeatDetails(seatNum) {
   const n = Math.max(1, Math.min(200, parseInt(seatNum, 10) || 1));
   let sector = 1;
@@ -213,90 +223,8 @@ function getSeatDetails(seatNum) {
   };
 }
 
-// Generate high-resolution official TEDx Ticket Image with QR Code
-async function generateTicketImage({ name, sector, row, seat, seatNumber, ticketId, qrUrl }) {
-  const qrDataUrl = await QRCode.toDataURL(qrUrl, {
-    margin: 1,
-    width: 300,
-    color: {
-      dark: '#0E0E11',
-      light: '#FFFFFF'
-    }
-  });
-
-  const activeSector = sector || 1;
-  const activeRow = row || 1;
-  const activeSeat = seat || 1;
-
-  const formattedSector = String(activeSector).padStart(2, '0');
-  const formattedRow = String(activeRow).padStart(2, '0');
-  const formattedSeat = String(activeSeat).padStart(2, '0');
-  const safeName = escapeXml(String(name || 'Mehmon').slice(0, 40));
-
-  const svg = `
-  <svg width="1000" height="500" viewBox="0 0 1000 500" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <!-- Card Background -->
-    <rect width="1000" height="500" rx="32" fill="#0E0E11"/>
-    
-    <!-- Red Outer Accent Border -->
-    <rect x="2" y="2" width="996" height="496" rx="30" stroke="#E62B1E" stroke-width="3" stroke-opacity="0.4"/>
-
-    <!-- Header Badge -->
-    <rect x="60" y="50" width="180" height="36" rx="18" fill="#E62B1E" fill-opacity="0.15" stroke="#E62B1E" stroke-width="1"/>
-    <text x="150" y="73" fill="#E62B1E" font-family="sans-serif" font-weight="bold" font-size="13" text-anchor="middle" letter-spacing="2">OFFICIAL TICKET</text>
-
-    <!-- TEDxSergeli Logo -->
-    <text x="60" y="140" fill="#E62B1E" font-family="sans-serif" font-weight="900" font-size="52" letter-spacing="-1">TEDx<tspan fill="#FFFFFF">Sergeli</tspan></text>
-    <text x="60" y="168" fill="#8E8E93" font-family="sans-serif" font-size="14" letter-spacing="1">x = independently organized TED event</text>
-
-    <!-- Dashed Line Separator -->
-    <line x1="650" y1="50" x2="650" y2="450" stroke="#2C2C30" stroke-width="3" stroke-dasharray="8 8"/>
-
-    <!-- Guest Name -->
-    <text x="60" y="230" fill="#8E8E93" font-family="sans-serif" font-size="13" font-weight="bold" letter-spacing="2">GUEST / МЕХМОН</text>
-    <text x="60" y="270" fill="#FFFFFF" font-family="sans-serif" font-size="32" font-weight="bold">${safeName}</text>
-
-    <!-- Sector, Row & Seat Boxes -->
-    <g transform="translate(60, 315)">
-      <!-- Sector Box -->
-      <rect x="0" y="0" width="160" height="80" rx="16" fill="#1A1A1E" stroke="#2C2C30" stroke-width="1"/>
-      <text x="16" y="30" fill="#8E8E93" font-family="sans-serif" font-size="11" font-weight="bold" letter-spacing="1">SECTOR / СЕКТОР</text>
-      <text x="16" y="65" fill="#E62B1E" font-family="sans-serif" font-size="32" font-weight="900">${formattedSector}</text>
-
-      <!-- Row Box -->
-      <rect x="180" y="0" width="160" height="80" rx="16" fill="#1A1A1E" stroke="#2C2C30" stroke-width="1"/>
-      <text x="196" y="30" fill="#8E8E93" font-family="sans-serif" font-size="11" font-weight="bold" letter-spacing="1">ROW / РЯД</text>
-      <text x="196" y="65" fill="#FFFFFF" font-family="sans-serif" font-size="32" font-weight="900">${formattedRow}</text>
-
-      <!-- Seat Box -->
-      <rect x="360" y="0" width="160" height="80" rx="16" fill="#1A1A1E" stroke="#2C2C30" stroke-width="1"/>
-      <text x="376" y="30" fill="#8E8E93" font-family="sans-serif" font-size="11" font-weight="bold" letter-spacing="1">SEAT / JOY</text>
-      <text x="376" y="65" fill="#FFFFFF" font-family="sans-serif" font-size="32" font-weight="900">${formattedSeat}</text>
-    </g>
-
-    <!-- Ticket ID -->
-    <text x="60" y="445" fill="#8E8E93" font-family="sans-serif" font-size="13" font-weight="bold" letter-spacing="1">TICKET ID: <tspan fill="#E62B1E">${ticketId}</tspan></text>
-
-    <!-- QR Code Container -->
-    <rect x="685" y="90" width="260" height="260" rx="24" fill="#FFFFFF"/>
-    <image x="700" y="105" width="230" height="230" href="${qrDataUrl}"/>
-
-    <!-- Scan Notice -->
-    <text x="815" y="385" fill="#FFFFFF" font-family="sans-serif" font-weight="bold" font-size="14" text-anchor="middle">SCAN FOR ENTRANCE</text>
-    <text x="815" y="408" fill="#8E8E93" font-family="sans-serif" font-size="12" text-anchor="middle">Kirishda tekshirish uchun</text>
-
-    <text x="815" y="445" fill="#48484A" font-family="sans-serif" font-size="11" text-anchor="middle" letter-spacing="1">TEDxSergeli 2026</text>
-  </svg>
-  `;
-
-  const resvg = new Resvg(svg, {
-    fitTo: { mode: 'width', value: 1200 },
-  });
-  return resvg.render().asPng();
-}
-
 const texts = {
-  welcome: `👋 <b>Привет! Вы в официальном боте TEDxSergeli.</b>\nДо вашего билета остался всего 1 шаг.\n\n🌐 <b>Tilni tanlang / Выберите язык / Choose language:</b>`,
+  welcome: `👋 <b>Привет! Вы в официальном боте TEDxSergeli Specialized School.</b>\nДо вашего билета остался всего 1 шаг.\n\n🌐 <b>Tilni tanlang / Выберите язык / Choose language:</b>`,
   askName: {
     uz: `👤 Iltimos, ism va familiyangizni kiriting (mehmonlar ro'yxati uchun):`,
     ru: `👤 Введите ваше Имя и Фамилию для внесения в списки гостей:`,
@@ -332,11 +260,11 @@ export default async function handler(req, res) {
 
   try {
     const update = req.body;
-    const TICKET_THREAD_ID = process.env.TELEGRAM_TICKET_THREAD_ID;
+    if (!update) return res.status(200).json({ ok: true });
 
-    // Handle Incoming Messages
+    // Handle Telegram Message
     if (update.message) {
-      const { chat, from, text, photo, contact, message_id } = update.message;
+      const { text, from, chat, photo, contact } = update.message;
       const chatId = chat.id;
 
       // Track user for analytics and broadcasts
@@ -345,7 +273,7 @@ export default async function handler(req, res) {
       // === SUPER ADMIN COMMAND ENGINE ===
       if (text && (await isSuperAdmin(from, chatId))) {
         
-        // 0. Hide Keyboard Command
+        // Hide Keyboard Command
         if (text === '❌ Скрыть меню') {
           await callTelegram('sendMessage', {
             chat_id: chatId,
@@ -356,12 +284,23 @@ export default async function handler(req, res) {
           return res.status(200).json({ ok: true });
         }
 
-        // 1. Admin Help / Dashboard / Instructions (/admin, /help_admin, "ℹ️ Инструкция", /scanner, /checkin)
+        // Database Reset Command (/reset_db or /clear_db)
+        if (text === '/reset_db' || text === '/clear_db') {
+          await kv.set('occupied_seats', []);
+          await kv.set('allocated_seats', []);
+          await kv.set('total_tickets_sold', 0);
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: `✅ <b>База данных очищена!</b>\nВсе забронированные места и проданные билеты сброшены (0/200).`,
+            reply_markup: ADMIN_KEYBOARD
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        // Admin Dashboard / Help
         if (text === '/admin' || text === '/help_admin' || text === 'ℹ️ Инструкция' || text === '/scanner' || text === '/checkin' || text === '/scan') {
-          const appDomain = process.env.VERCEL_URL
-            ? (process.env.VERCEL_URL.startsWith('http') ? process.env.VERCEL_URL : `https://${process.env.VERCEL_URL}`)
-            : 'https://tedxsergeli.vercel.app';
-          const scannerAppUrl = `${appDomain}/scanner`;
+          const scannerAppUrl = `${PUBLIC_DOMAIN}/scanner`;
 
           await callTelegram('sendMessage', {
             chat_id: chatId,
@@ -377,9 +316,10 @@ export default async function handler(req, res) {
                   `• <code>/add_scanner @username</code> — Назначить волонтера-контролера\n` +
                   `• <code>/del_scanner @username</code> — Удалить контролера\n` +
                   `• <code>/scanners</code> — Список контролеров (кнопка <b>📋 Контролеры</b>)\n\n` +
-                  `📊 <b>Мониторинг и Управление Билетами:</b>\n` +
-                  `• <code>/stats</code> — Живая статистика билетов и входа (кнопка <b>📊 Статистика</b>)\n` +
-                  `• <code>/find TEDX-849201</code> — Найти всю информацию о билете\n` +
+                  `📊 <b>Мониторинг и База Данных:</b>\n` +
+                  `• <code>/stats</code> — Живая статистика билетов (кнопка <b>📊 Статистика</b>)\n` +
+                  `• <code>/reset_db</code> — Очистить все места и сбросить билеты\n` +
+                  `• <code>/find TEDX-849201</code> — Найти инфо о билете\n` +
                   `• <code>/reset_ticket TEDX-849201</code> — Сбросить статус билета в VALID\n\n` +
                   `📢 <b>Массовые Рассылки:</b>\n` +
                   `• <code>/broadcast Ваш текст</code> — Отправить анонс всем пользователям бота`,
@@ -397,7 +337,7 @@ export default async function handler(req, res) {
           return res.status(200).json({ ok: true });
         }
 
-        // 2. Add Super Admin Command: /add_admin @username
+        // Add Super Admin
         if (text.startsWith('/add_admin')) {
           const target = text.replace('/add_admin', '').trim().replace('@', '');
           if (!target) {
@@ -419,13 +359,13 @@ export default async function handler(req, res) {
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `👑 <b>Новый Со-Администратор назначен!</b>\n\n👤 <b>Админ:</b> <code>${target}</code>\nТеперь этому пользователю доступны все админ-команды.`,
+            text: `👑 <b>Новый Со-Администратор назначен!</b>\n\n👤 <b>Админ:</b> <code>${target}</code>`,
             reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
 
-        // 3. Remove Super Admin Command: /del_admin @username
+        // Delete Super Admin
         if (text.startsWith('/del_admin')) {
           const target = text.replace('/del_admin', '').trim().replace('@', '');
           let extraAdmins = (await kv.get('super_admins')) || [];
@@ -441,7 +381,7 @@ export default async function handler(req, res) {
           return res.status(200).json({ ok: true });
         }
 
-        // 4. List Super Admins: /admins or "👑 Админы"
+        // List Admins
         if (text === '/admins' || text === '👑 Админы') {
           const extraAdmins = (await kv.get('super_admins')) || [];
           const listStr = extraAdmins.length > 0
@@ -451,17 +391,15 @@ export default async function handler(req, res) {
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `👑 <b>Список Администраторов TEDxSergeli:</b>\n\n` +
-                  `🌟 <b>Главный Создатель (Founder):</b> <code>${SUPER_ADMIN_ID}</code>\n` +
-                  `🛡 <b>Со-Администраторы:</b>\n${listStr}\n\n` +
-                  `💡 <i>Добавить админа: <code>/add_admin @username</code></i>\n` +
-                  `💡 <i>Удалить админа: <code>/del_admin @username</code></i>`,
+            text: `👑 <b>СПИСОК АДМИНИСТРАТОРОВ TEDxSergeli:</b>\n\n` +
+                  `🥇 <b>Главный Админ:</b> <code>${SUPER_ADMIN_ID}</code>\n\n` +
+                  `👥 <b>Со-Администраторы:</b>\n${listStr}`,
             reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
 
-        // 5. Add Scanner Command: /add_scanner @username
+        // Add Scanner
         if (text.startsWith('/add_scanner')) {
           const target = text.replace('/add_scanner', '').trim().replace('@', '');
           if (!target) {
@@ -483,13 +421,13 @@ export default async function handler(req, res) {
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `✅ <b>Волонтер назначен Контролером билетов!</b>\n\n👤 <b>Контролер:</b> <code>${target}</code>\nТеперь он может сканировать QR-коды гостей на входе.`,
+            text: `🎫 <b>Новый контролер билетов добавлен!</b>\n\n👤 <b>Контролер:</b> <code>${target}</code>`,
             reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
 
-        // 6. Remove Scanner Command: /del_scanner @username
+        // Remove Scanner
         if (text.startsWith('/del_scanner')) {
           const target = text.replace('/del_scanner', '').trim().replace('@', '');
           let scanners = (await kv.get('allowed_scanners')) || [];
@@ -499,79 +437,63 @@ export default async function handler(req, res) {
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `🗑 <b>Волонтер удален из контролеров:</b> <code>${target}</code>`,
+            text: `🗑 <b>Контролер удален:</b> <code>${target}</code>`,
             reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
 
-        // 7. List Scanners: /scanners or "📋 Контролеры"
+        // List Scanners
         if (text === '/scanners' || text === '📋 Контролеры') {
           const scanners = (await kv.get('allowed_scanners')) || [];
           const listStr = scanners.length > 0
             ? scanners.map((s, i) => `${i + 1}. <code>${s}</code>`).join('\n')
-            : '<i>Список пуст. Добавьте волонтеров через /add_scanner @username</i>';
+            : '<i>Контролеры пока не добавлены.</i>';
 
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `📋 <b>Авторизованные Контролеры билетов:</b>\n\n${listStr}\n\n` +
-                  `💡 <i>Добавить контролера: <code>/add_scanner @username</code></i>\n` +
-                  `💡 <i>Удалить контролера: <code>/del_scanner @username</code></i>`,
+            text: `📋 <b>СПИСОК АВТОРИЗОВАННЫХ КОНТРОЛЕРОВ ВХОДА:</b>\n\n${listStr}`,
             reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
 
-        // 8. Event Statistics Command: /stats or "📊 Статистика"
+        // Statistics
         if (text === '/stats' || text === '📊 Статистика') {
-          const ticketIds = (await kv.get('all_ticket_ids')) || [];
+          const totalSold = parseInt((await kv.get('total_tickets_sold')) || 0, 10);
+          const allTicketIds = (await kv.get('all_ticket_ids')) || [];
           const allUserIds = (await kv.get('all_user_ids')) || [];
+          const occupiedSeats = (await kv.get('occupied_seats')) || [];
 
-          let validCount = 0;
-          let usedCount = 0;
-
-          for (const tid of ticketIds) {
-            const ticket = await kv.get(`ticket:${tid}`);
-            if (ticket) {
-              if (ticket.status === 'used') usedCount++;
-              else if (ticket.status === 'valid') validCount++;
-            }
+          let scannedCount = 0;
+          for (const tid of allTicketIds) {
+            const t = await kv.get(`ticket:${tid}`);
+            if (t && t.status === 'used') scannedCount++;
           }
 
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `📊 <b>ЖИВАЯ СТАТИСТИКА TEDxSergeli</b>\n\n` +
-                  `👥 <b>Всего пользователей в боте:</b> ${allUserIds.length}\n` +
-                  `🎟 <b>Выдано билетов (Подтверждено):</b> ${ticketIds.length}\n\n` +
-                  `🟢 <b>Прошли на мероприятие (USED):</b> ${usedCount}\n` +
-                  `🟡 <b>Ожидают входа (VALID):</b> ${validCount}\n` +
-                  `📈 <b>Заполняемость зала:</b> ${ticketIds.length > 0 ? Math.round((usedCount / ticketIds.length) * 100) : 0}%`,
+            text: `📊 <b>СТАТИСТИКА TEDxSergeli Specialized School:</b>\n\n` +
+                  `👥 <b>Пользователей в боте:</b> ${allUserIds.length}\n` +
+                  `🎟 <b>Продано билетов:</b> ${totalSold} / 200\n` +
+                  `⏳ <b>Временно забронировано мест:</b> ${occupiedSeats.length}\n` +
+                  `🟢 <b>Прошло через контроль (Вход):</b> ${scannedCount} человек`,
             reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
 
-        // 9. Find Ticket Command: /find TEDX-849201
+        // Find Ticket
         if (text.startsWith('/find')) {
-          const query = text.replace('/find', '').trim();
-          if (!query) {
-            await callTelegram('sendMessage', {
-              chat_id: chatId,
-              parse_mode: 'HTML',
-              text: `⚠️ <b>Использование:</b> <code>/find TEDX-849201</code>`,
-              reply_markup: ADMIN_KEYBOARD
-            });
-            return res.status(200).json({ ok: true });
-          }
-
-          let ticket = await kv.get(`ticket:${query}`);
+          const tid = text.replace('/find', '').trim();
+          let ticket = await kv.get(`ticket:${tid}`);
           if (!ticket) {
             await callTelegram('sendMessage', {
               chat_id: chatId,
               parse_mode: 'HTML',
-              text: `❌ Билет <code>${query}</code> не найден.`,
+              text: `❌ Билет <code>${tid}</code> не найден.`,
               reply_markup: ADMIN_KEYBOARD
             });
             return res.status(200).json({ ok: true });
@@ -593,35 +515,7 @@ export default async function handler(req, res) {
           return res.status(200).json({ ok: true });
         }
 
-        // 10. Reset Ticket Command (restore VALID status): /reset_ticket TEDX-849201
-        if (text.startsWith('/reset_ticket')) {
-          const tid = text.replace('/reset_ticket', '').trim();
-          let ticket = await kv.get(`ticket:${tid}`);
-          if (!ticket) {
-            await callTelegram('sendMessage', {
-              chat_id: chatId,
-              parse_mode: 'HTML',
-              text: `❌ Билет <code>${tid}</code> не найден.`,
-              reply_markup: ADMIN_KEYBOARD
-            });
-            return res.status(200).json({ ok: true });
-          }
-
-          ticket.status = 'valid';
-          delete ticket.used_at;
-          delete ticket.scanned_by;
-          await kv.set(`ticket:${tid}`, ticket);
-
-          await callTelegram('sendMessage', {
-            chat_id: chatId,
-            parse_mode: 'HTML',
-            text: `✅ <b>Статус билета <code>${tid}</code> успешно сброшен в VALID!</b>\nТеперь этот билет можно отсканировать снова.`,
-            reply_markup: ADMIN_KEYBOARD
-          });
-          return res.status(200).json({ ok: true });
-        }
-
-        // 11. Broadcast Command: /broadcast Text message
+        // Broadcast
         if (text.startsWith('/broadcast')) {
           const broadcastMsg = text.replace('/broadcast', '').trim();
           if (!broadcastMsg) {
@@ -639,12 +533,12 @@ export default async function handler(req, res) {
 
           for (const uid of allUserIds) {
             try {
-              const res = await callTelegram('sendMessage', {
+              const r = await callTelegram('sendMessage', {
                 chat_id: uid,
                 parse_mode: 'HTML',
                 text: `📢 <b>Официальное сообщение TEDxSergeli:</b>\n\n${broadcastMsg}`
               });
-              if (res.ok) successCount++;
+              if (r && r.ok) successCount++;
             } catch {}
           }
 
@@ -658,15 +552,13 @@ export default async function handler(req, res) {
         }
       }
 
-      // 1. Handle /start command (Normal start OR QR Code Scanner Deep Link)
+      // Handle /start command (Normal registration or QR scanner deep link)
       if (text && text.startsWith('/start')) {
         const payload = text.split(' ')[1] || 'direct';
 
-        // Check if this is a Ticket QR Code Scan (e.g., /start scan_TEDX-849201 or /start TEDX-849201)
+        // Check if QR Code Scan
         if (payload.startsWith('scan_') || payload.startsWith('TEDX-')) {
           const ticketId = payload.replace('scan_', '').trim();
-
-          // 🔒 SECURITY GUARD: Check if the user scanning the code is an authorized scanner/admin
           const authorized = await isAuthorizedScanner(from, chatId);
 
           if (!authorized) {
@@ -694,7 +586,6 @@ export default async function handler(req, res) {
           const scannerUsername = from ? (from.username || from.first_name || 'Volunteer') : 'Volunteer';
 
           if (ticket.status === 'valid') {
-            // Mark Ticket as Used
             ticket.status = 'used';
             ticket.used_at = new Date().toISOString();
             ticket.scanned_by = scannerUsername;
@@ -711,7 +602,6 @@ export default async function handler(req, res) {
                     `✅ <i>Статус билета изменен на: ИСПОЛЬЗОВАН (Вход разрешен).</i>`
             });
           } else {
-            // Ticket was already scanned previously
             const timeStr = ticket.used_at
               ? new Date(ticket.used_at).toLocaleTimeString('ru-RU', { timeZone: 'Asia/Tashkent', hour: '2-digit', minute: '2-digit' })
               : 'Ранее';
@@ -732,24 +622,10 @@ export default async function handler(req, res) {
           return res.status(200).json({ ok: true });
         }
 
-        // Check for pre-selected seat parameter (e.g., /start seat_42 or /start seat-42 or /start SEAT-42 or /start 42)
-        let requestedSeat = null;
-        if (payload.match(/^seat[_-]?\d+$/i)) {
-          requestedSeat = parseInt(payload.replace(/^seat[_-]?/i, ''), 10);
-        } else if (/^\d+$/.test(payload)) {
-          const num = parseInt(payload, 10);
-          if (num >= 1 && num <= 200) requestedSeat = num;
-        }
-
-        // Standard user /start registration flow
+        // Standard clean registration start
         let user = { step: 'LANG', source: payload, payment_status: 'none' };
-        if (requestedSeat && requestedSeat >= 1 && requestedSeat <= 200) {
-          user.seatNumber = requestedSeat;
-          user.seatId = `SEAT-${requestedSeat}`;
-        }
         await kv.set(`user:${chatId}`, user);
 
-        // Send Super Admin Keyboard greeting if user is Super Admin
         if (await isSuperAdmin(from, chatId)) {
           await callTelegram('sendMessage', {
             chat_id: chatId,
@@ -807,24 +683,24 @@ export default async function handler(req, res) {
                     `⏳ <b>Diqqat! Ushbu joy siz uchun 15 daqiqa davomida band qilinadi.</b>\n` +
                     `Shu vaqt ichida to'lov chekini (скриншот) yuborishingiz kerak.\n\n` +
                     `💳 <b>To'lov miqdori:</b> 49 999 UZS\n` +
-                    `💳 <b>Karta raqami:</b> <code>8600 0000 0000 0000</code>\n` +
-                    `👤 <b>Qabul qiluvchi:</b> TEDxSergeli Team\n\n` +
+                    `💳 <b>Karta raqami:</b> <code>5614 6822 1091 3879</code>\n` +
+                    `👤 <b>Qabul qiluvchi:</b> Abidjanov Baxtiyor\n\n` +
                     `📸 To'lovni amalga oshirgach, <b>chek (скриншот)</b>ni shu yerga yuboring.`;
             } else if (userLang === 'en') {
               msg = `✅ <b>Seat selected: #${seatNumber} (Sector ${sector || 1}, Row ${row || 1} / Seat ${seat || 1})</b>\n\n` +
                     `⏳ <b>Attention! This seat is reserved for 15 minutes.</b>\n` +
                     `Please send the payment receipt screenshot within this time.\n\n` +
                     `💳 <b>Amount:</b> 49,999 UZS\n` +
-                    `💳 <b>Card Number:</b> <code>8600 0000 0000 0000</code>\n` +
-                    `👤 <b>Recipient:</b> TEDxSergeli Team\n\n` +
+                    `💳 <b>Card Number:</b> <code>5614 6822 1091 3879</code>\n` +
+                    `👤 <b>Recipient:</b> Abidjanov Baxtiyor\n\n` +
                     `📸 After payment, please send the receipt screenshot here.`;
             } else {
               msg = `✅ <b>Место выбрано: №${seatNumber} (Сектор ${sector || 1}, ${row || 1}-ряд / ${seat || 1}-место)</b>\n\n` +
                     `⏳ <b>Внимание! Это место забронировано за вами на 15 минут.</b>\n` +
                     `Пожалуйста, отправьте чек об оплате в течение этого времени.\n\n` +
                     `💳 <b>Сумма к оплате:</b> 49 999 UZS\n` +
-                    `💳 <b>Номер карты:</b> <code>8600 0000 0000 0000</code>\n` +
-                    `👤 <b>Получатель:</b> TEDxSergeli Team\n\n` +
+                    `💳 <b>Номер карты:</b> <code>5614 6822 1091 3879</code>\n` +
+                    `👤 <b>Получатель:</b> Abidjanov Baxtiyor\n\n` +
                     `📸 После оплаты отправьте <b>скриншот чека</b> в этот чат.`;
             }
 
@@ -865,7 +741,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
 
-      // 3. User sends Phone -> Move to SELECT_SEAT (Telegram WebApp Mini App)
+      // 3. User sends Phone -> Move strictly to SELECT_SEAT (Telegram WebApp Mini App)
       if (user.step === 'PHONE') {
         if (contact) {
           user.phone = contact.phone_number;
@@ -874,181 +750,79 @@ export default async function handler(req, res) {
         }
 
         if (user.phone) {
-          const appDomain = process.env.VERCEL_URL
-            ? (process.env.VERCEL_URL.startsWith('http') ? process.env.VERCEL_URL : `https://${process.env.VERCEL_URL}`)
-            : 'https://tedxsergeli.vercel.app';
-          const seatPickerUrl = `${appDomain}/seat-picker`;
-          const lang = user.lang || 'ru';
-
-          if (user.seatNumber) {
-            user.step = 'PAYMENT';
-            await kv.set(`user:${chatId}`, user);
-
-            let msg = '';
-            if (lang === 'uz') {
-              msg = `📍 <b>Siz tanlagan joy: #${user.seatNumber}</b>\n\n` +
-                    `⏳ <i>Ushbu joy siz uchun 15 daqiqaga band qilindi.</i>\n\n` +
-                    `💳 <b>To'lov miqdori:</b> 49 999 UZS\n` +
-                    `💳 <b>Karta raqami:</b> <code>8600 0000 0000 0000</code>\n` +
-                    `👤 <b>Qabul qiluvchi:</b> TEDxSergeli Team\n\n` +
-                    `📸 To'lovni amalga oshirgach, <b>chek (скриншот)</b>ni shu yerga yuboring.`;
-            } else if (lang === 'en') {
-              msg = `📍 <b>Your selected seat: #${user.seatNumber}</b>\n\n` +
-                    `⏳ <i>This seat is reserved for you for 15 minutes.</i>\n\n` +
-                    `💳 <b>Amount:</b> 49,999 UZS\n` +
-                    `💳 <b>Card Number:</b> <code>8600 0000 0000 0000</code>\n` +
-                    `👤 <b>Recipient:</b> TEDxSergeli Team\n\n` +
-                    `📸 After payment, please send the receipt screenshot here.`;
-            } else {
-              msg = `📍 <b>Ваше выбранное место: №${user.seatNumber}</b>\n\n` +
-                    `⏳ <i>Это место забронировано за вами на 15 минут.</i>\n\n` +
-                    `💳 <b>Сумма к оплате:</b> 49 999 UZS\n` +
-                    `💳 <b>Номер карты:</b> <code>8600 0000 0000 0000</code>\n` +
-                    `👤 <b>Получатель:</b> TEDxSergeli Team\n\n` +
-                    `📸 После оплаты отправьте <b>скриншот чека</b> в этот чат.`;
-            }
-
-            await callTelegram('sendMessage', {
-              chat_id: chatId,
-              parse_mode: 'HTML',
-              text: msg,
-              reply_markup: {
-                inline_keyboard: [
-                  [
-                    {
-                      text: "🎭 Joyni o'zgartirish (Схема зала)",
-                      web_app: { url: seatPickerUrl }
-                    }
-                  ]
-                ]
-              }
-            });
-          } else {
-            user.step = 'SELECT_SEAT';
-            await kv.set(`user:${chatId}`, user);
-
-            let msg = '';
-            if (lang === 'uz') {
-              msg = `🎟️ <b>Telefon raqam saqlandi!</b>\n\nEndi quyidagi tugma orqali interaktiv sxemadan o'zingizga yoqqan joyni tanlang:`;
-            } else if (lang === 'en') {
-              msg = `🎟️ <b>Phone number saved!</b>\n\nNow select your preferred seat on the interactive hall map below:`;
-            } else {
-              msg = `🎟️ <b>Номер телефона сохранен!</b>\n\nТеперь выберите удобное место на интерактивной схеме зала:`;
-            }
-
-            await callTelegram('sendMessage', {
-              chat_id: chatId,
-              parse_mode: 'HTML',
-              text: msg,
-              reply_markup: {
-                inline_keyboard: [
-                  [
-                    {
-                      text: "🎟️ Joyni tanlash (Схема зала)",
-                      web_app: { url: seatPickerUrl }
-                    }
-                  ]
-                ]
-              }
-            });
-          }
-        }
-        return res.status(200).json({ ok: true });
-      }
-
-      // 4. User sends a photo (receipt)
-      if (user.step === 'PAYMENT' && photo && photo.length > 0) {
-        // ⏱️ CHECK IF RESERVATION HAS EXPIRED (15 Minutes Expiry Guard)
-        if (user.bookingExpiresAt && Date.now() > user.bookingExpiresAt && user.payment_status !== 'confirmed') {
-          if (user.seatNumber) {
-            let occupied = (await kv.get('occupied_seats')) || [];
-            if (Array.isArray(occupied)) {
-              occupied = occupied.filter(s => s !== user.seatNumber);
-              await kv.set('occupied_seats', occupied);
-            }
-          }
-
-          user.seatNumber = null;
-          user.seatId = null;
           user.step = 'SELECT_SEAT';
-          delete user.bookingExpiresAt;
           await kv.set(`user:${chatId}`, user);
 
+          const seatPickerUrl = `${PUBLIC_DOMAIN}/seat-picker`;
           const lang = user.lang || 'ru';
-          const appDomain = process.env.VERCEL_URL
-            ? (process.env.VERCEL_URL.startsWith('http') ? process.env.VERCEL_URL : `https://${process.env.VERCEL_URL}`)
-            : 'https://tedxsergeli.vercel.app';
-          const seatPickerUrl = `${appDomain}/seat-picker`;
 
-          let expiredMsg = '';
+          let msg = '';
           if (lang === 'uz') {
-            expiredMsg = `⚠️ <b>Band qilish vaqti (15 daqiqa) tugadi!</b>\n\n` +
-                         `Siz tanlagan joy resurslarni bo'shatish uchun bekor qilindi.\n` +
-                         `Iltimos, quyidagi tugma orqali qaytadan joy tanlang:`;
+            msg = `🎟️ <b>Telefon raqam saqlandi!</b>\n\nEndi quyidagi tugma orqali interaktiv sxemadan o'zingizga yoqqan joyni tanlang:`;
           } else if (lang === 'en') {
-            expiredMsg = `⚠️ <b>Reservation time (15 minutes) has expired!</b>\n\n` +
-                         `Your reserved seat was released.\n` +
-                         `Please select a seat again using the button below:`;
+            msg = `🎟️ <b>Phone number saved!</b>\n\nNow select your preferred seat on the interactive hall map below:`;
           } else {
-            expiredMsg = `⚠️ <b>Время бронирования (15 минут) истекло!</b>\n\n` +
-                         `Ваше забронированное место было сброшено.\n` +
-                         `Пожалуйста, выберите место заново с помощью кнопки ниже:`;
+            msg = `🎟️ <b>Номер телефона сохранен!</b>\n\nТеперь выберите удобное место на интерактивной схеме зала:`;
           }
 
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: expiredMsg,
+            text: msg,
             reply_markup: {
               inline_keyboard: [
                 [
                   {
-                    text: "🎟️ Joyni qayta tanlash (Схема зала)",
+                    text: "🎟️ Joyni tanlash (Схема зала)",
                     web_app: { url: seatPickerUrl }
                   }
                 ]
               ]
             }
           });
-
           return res.status(200).json({ ok: true });
         }
+      }
 
-        const fileId = photo[photo.length - 1].file_id;
+      // 4. User sends Payment Receipt Photo
+      if (photo && photo.length > 0) {
+        user.step = 'AWAITING_VERIFICATION';
         user.payment_status = 'pending';
         await kv.set(`user:${chatId}`, user);
 
-        const adminPayload = {
-          chat_id: ADMIN_CHAT_ID,
-          photo: fileId,
-          parse_mode: 'HTML',
-          caption: `🧾 <b>Yangi to'lov!</b>\n` +
-                   `👤 FIO: <b>${user.name || "Noma'lum"}</b>\n` +
-                   `📱 Tel: <code>${user.phone || "Noma'lum"}</code>\n` +
-                   `🔗 Manba (Source): ${user.source || 'direct'}\n` +
-                   `TG: @${chat.username || chat.first_name || "Ism yo'q"} (ID: <code>${chatId}</code>)`,
-          reply_markup: {
-            inline_keyboard: [
-              [
-                { text: '✅ Tasdiqlash', callback_data: `confirm_${chatId}` },
-                { text: '❌ Rad etish', callback_data: `reject_${chatId}` }
-              ]
-            ]
-          }
-        };
-        if (TICKET_THREAD_ID) {
-          adminPayload.message_thread_id = TICKET_THREAD_ID;
-        }
-        await callTelegram('sendPhoto', adminPayload);
-
+        const photoFileId = photo[photo.length - 1].file_id;
         const lang = user.lang || 'ru';
+
+        // Notify User
         await callTelegram('sendMessage', {
           chat_id: chatId,
           parse_mode: 'HTML',
-          text: texts.photoReply[lang],
-          reply_to_message_id: message_id,
+          text: texts.photoReply[lang]
         });
-        
+
+        // Notify Admin for approval
+        if (ADMIN_CHAT_ID) {
+          const seatInfo = getSeatDetails(user.seatNumber || 1);
+          await callTelegram('sendPhoto', {
+            chat_id: ADMIN_CHAT_ID,
+            photo: photoFileId,
+            caption: `📥 <b>YANGI TO'LOV CHEKI / НОВЫЙ ЧЕК ОБ ОПЛАТЕ!</b>\n\n` +
+                     `👤 <b>Ism / Имя:</b> ${user.name || 'Noma\'lum'}\n` +
+                     `📱 <b>Тел:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
+                     `📍 <b>Mavjud joy:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
+                     `🌐 <b>Til:</b> ${(user.lang || 'ru').toUpperCase()}\n` +
+                     `🆔 <b>User ID:</b> <code>${chatId}</code>`,
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: "✅ Tasdiqlash (Подтвердить)", callback_data: `confirm_${chatId}` },
+                  { text: "❌ Rad etish (Отклонить)", callback_data: `reject_${chatId}` }
+                ]
+              ]
+            }
+          });
+        }
         return res.status(200).json({ ok: true });
       }
     }
@@ -1063,9 +837,11 @@ export default async function handler(req, res) {
       if (data.startsWith('lang_')) {
         const selectedLang = data.split('_')[1];
         
-        let user = (await kv.get(`user:${chatId}`)) || {};
-        user.lang = selectedLang;
-        user.step = 'NAME';
+        let user = {
+          chatId,
+          lang: selectedLang,
+          step: 'NAME'
+        };
         await kv.set(`user:${chatId}`, user);
 
         await callTelegram('editMessageText', {
@@ -1085,13 +861,12 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
 
-      // Handle Admin Actions
+      // Handle Admin Actions (Confirm / Reject)
       if (data.startsWith('confirm_') || data.startsWith('reject_')) {
         const [action, userIdStr] = data.split('_');
         const userId = parseInt(userIdStr, 10);
         let user = (await kv.get(`user:${userId}`)) || {};
 
-        // Prevent double processing if admin clicks button multiple times
         if (user.payment_status === 'confirmed' || user.payment_status === 'rejected') {
           await callTelegram('answerCallbackQuery', {
             callback_query_id: id,
@@ -1104,7 +879,6 @@ export default async function handler(req, res) {
         if (action === 'confirm') {
           const ticketId = `TEDX-${Math.floor(100000 + Math.random() * 900000)}`;
 
-          // 🎟 1. GLOBAL TICKET COUNTER & SEAT ALLOCATION (Max 200)
           let totalSold = (await kv.get('total_tickets_sold')) || 0;
           totalSold = parseInt(totalSold, 10) || 0;
 
@@ -1126,7 +900,6 @@ export default async function handler(req, res) {
 
           const seatInfo = getSeatDetails(seatNumber);
 
-          // Save official ticket record
           const ticketData = {
             id: ticketId,
             userId: userId,
@@ -1150,24 +923,15 @@ export default async function handler(req, res) {
           user.payment_status = 'confirmed';
           await kv.set(`user:${userId}`, user);
 
-          // Get bot username dynamically or use default
           const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'TEDxSergeliBot';
           const qrUrl = `https://t.me/${botUsername}?start=scan_${ticketId}`;
 
-          // Generate PNG Image with QR Code
+          // Generate PNG QR code image
           let photoBuffer = null;
           try {
-            photoBuffer = await generateTicketImage({
-              name: user.name || 'Mehmon',
-              sector: seatInfo.sector,
-              row: seatInfo.row,
-              seat: seatInfo.seat,
-              seatNumber: seatInfo.seatNumber,
-              ticketId,
-              qrUrl
-            });
+            photoBuffer = await generateTicketQrImage(qrUrl);
           } catch (genErr) {
-            console.error('Ticket image generation error:', genErr);
+            console.error('Ticket QR generation error:', genErr);
           }
 
           const userLang = user.lang || 'ru';
@@ -1176,9 +940,13 @@ export default async function handler(req, res) {
           if (userLang === 'uz') {
             ticketCaption =
               `🎉 <b>To'lov tasdiqlandi!</b>\n\n` +
-              `🎟️ <b>Sizning chiptangiz: #${seatInfo.seatNumber}</b>\n` +
-              `📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin\n` +
+              `🎟️ <b>TEDxSergeli Specialized School — Rasmiy Elektron Chipta</b>\n\n` +
+              `👤 <b>Mehmon:</b> ${user.name || 'Mehmon'}\n` +
+              `📍 <b>Sektor:</b> ${seatInfo.sectorName}\n` +
+              `📐 <b>O'rin:</b> ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (Umumiy №${seatInfo.seatNumber})\n` +
               `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n\n` +
+              `📅 <b>Sana:</b> 4-sentabr, 2026\n` +
+              `📍 <b>Manzil:</b> Sergeli Ixtisoslashtirilgan Maktabi\n\n` +
               `📌 <b>Kirish qoidalari:</b>\n` +
               `• 1️⃣ Tadbir kunida ushbu QR-kodni nazoratchiga ko'rsating.\n` +
               `• 2️⃣ Telefon ekranidan ko'rsatish yoki qog'ozga chiqarib kelish mumkin.\n` +
@@ -1186,9 +954,13 @@ export default async function handler(req, res) {
           } else if (userLang === 'en') {
             ticketCaption =
               `🎉 <b>Payment confirmed!</b>\n\n` +
-              `🎟️ <b>Your ticket: #${seatInfo.seatNumber}</b>\n` +
-              `📍 <b>Seat:</b> ${seatInfo.sector === 5 ? '2nd Floor (Balcony)' : `Sector ${seatInfo.sector}`}, Row ${seatInfo.row} / Seat ${seatInfo.seat}\n` +
+              `🎟️ <b>TEDxSergeli Specialized School — Official Ticket</b>\n\n` +
+              `👤 <b>Guest:</b> ${user.name || 'Guest'}\n` +
+              `📍 <b>Sector:</b> ${seatInfo.sector === 5 ? '2nd Floor (Balcony)' : `Sector ${seatInfo.sector}`}\n` +
+              `📐 <b>Seat:</b> Row ${seatInfo.row} / Seat ${seatInfo.seat} (Total №${seatInfo.seatNumber})\n` +
               `🔑 <b>Ticket ID:</b> <code>${ticketId}</code>\n\n` +
+              `📅 <b>Date:</b> September 4, 2026\n` +
+              `📍 <b>Location:</b> Sergeli Specialized School\n\n` +
               `📌 <b>Entrance Rules:</b>\n` +
               `• 1️⃣ Show this QR code to the scanner on the day of the event.\n` +
               `• 2️⃣ You can show it on your phone screen or print on paper.\n` +
@@ -1196,16 +968,19 @@ export default async function handler(req, res) {
           } else {
             ticketCaption =
               `🎉 <b>Оплата подтверждена!</b>\n\n` +
-              `🎟️ <b>Ваш билет: #${seatInfo.seatNumber}</b>\n` +
-              `📍 <b>Место:</b> ${seatInfo.sector === 5 ? '2-Этаж (Балкон)' : `Сектор ${seatInfo.sector}`}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место\n` +
+              `🎟️ <b>TEDxSergeli Specialized School — Официальный электронный билет</b>\n\n` +
+              `👤 <b>Гость:</b> ${user.name || 'Гость'}\n` +
+              `📍 <b>Сектор:</b> ${seatInfo.sector === 5 ? '2-Этаж (Балкон)' : `Сектор ${seatInfo.sector}`}\n` +
+              `📐 <b>Место:</b> ${seatInfo.row}-ряд / ${seatInfo.seat}-место (Общий №${seatInfo.seatNumber})\n` +
               `🔑 <b>ID Билета:</b> <code>${ticketId}</code>\n\n` +
+              `📅 <b>Дата:</b> 4 сентября 2026\n` +
+              `📍 <b>Адрес:</b> Специализированная школа Сергели\n\n` +
               `📌 <b>Правила входа:</b>\n` +
               `• 1️⃣ Обязательно покажите этот QR-код на входе в день мероприятия.\n` +
               `• 2️⃣ Можно показать с экрана телефона или распечатать.\n` +
               `• 3️⃣ Каждый QR-код действителен только для 1 входа.`;
           }
 
-          // Send Photo if buffer generated, fallback to text message
           if (photoBuffer) {
             await callTelegramPhoto(userId, photoBuffer, ticketCaption);
           } else {
@@ -1230,14 +1005,14 @@ export default async function handler(req, res) {
           await callTelegram('sendMessage', {
             chat_id: userId,
             parse_mode: 'HTML',
-            text: texts.reject,
+            text: texts.reject
           });
 
           await callTelegram('editMessageCaption', {
             chat_id: message.chat.id,
             message_id: message.message_id,
             parse_mode: 'HTML',
-            caption: `${message.caption || ''}\n\n❌ <b>RAD ETILDI</b>\nRad etdi: @${adminUsername}`,
+            caption: `${message.caption || ''}\n\n❌ <b>RAD ETILDI / ОТКЛОНЕНО</b>\nRad etdi: @${adminUsername}`,
             reply_markup: { inline_keyboard: [] }
           });
         }
@@ -1245,14 +1020,11 @@ export default async function handler(req, res) {
         await callTelegram('answerCallbackQuery', { callback_query_id: id });
         return res.status(200).json({ ok: true });
       }
-
-      await callTelegram('answerCallbackQuery', { callback_query_id: id });
-      return res.status(200).json({ ok: true });
     }
 
     return res.status(200).json({ ok: true });
-  } catch (error) {
-    console.error('Webhook error:', error);
-    return res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error('Webhook Error:', err);
+    return res.status(500).json({ error: err.message });
   }
 }
