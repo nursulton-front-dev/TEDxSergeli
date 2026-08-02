@@ -131,15 +131,11 @@ export const Scanner: React.FC = () => {
       });
     }
 
-    // Auto resume scanner after 3 seconds
-    if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
-    scanTimeoutRef.current = setTimeout(() => {
-      setScanResult({ status: 'idle' });
-    }, 3000);
+    // Status remains on screen until controller clicks button to reset
   };
 
   const onScanSuccess = (decodedText: string) => {
-    if (scanResult.status === 'loading' || scanResult.status === 'success') return;
+    if (scanResult.status === 'loading' || scanResult.status === 'success' || scanResult.status === 'error') return;
     handleVerifyTicket(decodedText);
   };
 
@@ -245,9 +241,12 @@ export const Scanner: React.FC = () => {
               ID: {scanResult.ticketId}
             </div>
           </div>
-          <p className="text-xs text-emerald-100 mt-6 animate-pulse">
-            3 sekunddan so'ng keyingi chipta сканерланади...
-          </p>
+          <button
+            onClick={() => setScanResult({ status: 'idle' })}
+            className="mt-6 px-8 py-4 bg-white text-emerald-950 font-black text-base rounded-2xl shadow-2xl hover:bg-emerald-100 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+          >
+            <span>Keyingi chiptani skanerlash ➔</span>
+          </button>
         </div>
       )}
 
@@ -261,9 +260,12 @@ export const Scanner: React.FC = () => {
             <AlertTriangle className="w-8 h-8 text-amber-300 mx-auto mb-1" />
             <p>{scanResult.message}</p>
           </div>
-          <p className="text-xs text-red-200 mt-6 animate-pulse">
-            3 sekunddan so'ng qayta сканерланади...
-          </p>
+          <button
+            onClick={() => setScanResult({ status: 'idle' })}
+            className="mt-6 px-8 py-4 bg-white text-red-950 font-black text-base rounded-2xl shadow-2xl hover:bg-red-100 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+          >
+            <span>Qayta skanerlash 🔄</span>
+          </button>
         </div>
       )}
 

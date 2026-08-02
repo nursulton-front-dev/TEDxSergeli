@@ -40,8 +40,8 @@ const kv = {
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
-const VOLUNTEER_THREAD_ID = process.env.TELEGRAM_VOLUNTEER_THREAD_ID || process.env.VOLUNTEER_TOPIC_ID;
-const TICKET_THREAD_ID = process.env.TELEGRAM_TICKET_THREAD_ID || process.env.TOPIC_ID_TICKETS || process.env.TICKETS_TOPIC_ID || process.env.ADMIN_TOPIC_ID;
+const VOLUNTEER_THREAD_ID = process.env.TELEGRAM_VOLUNTEER_THREAD_ID || process.env.VOLUNTEER_TOPIC_ID || '2';
+const TICKET_THREAD_ID = process.env.TELEGRAM_TICKET_THREAD_ID || process.env.TOPIC_ID_TICKETS || process.env.TICKETS_TOPIC_ID || process.env.ADMIN_TOPIC_ID || '4';
 const SUPER_ADMIN_ID = '6804139305'; // Founder Telegram ID
 const API_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
@@ -1244,7 +1244,7 @@ export default async function handler(req, res) {
           }
 
           // Duplicate Ticket photo to Admin Group Topic ("Tickets")
-          const TICKETS_TOPIC_ID = process.env.TOPIC_ID_TICKETS || process.env.TICKETS_TOPIC_ID || process.env.ADMIN_TOPIC_ID;
+          const TICKETS_TOPIC_ID = process.env.TELEGRAM_TICKET_THREAD_ID || process.env.TOPIC_ID_TICKETS || process.env.TICKETS_TOPIC_ID || process.env.ADMIN_TOPIC_ID || TICKET_THREAD_ID || '4';
           if (ADMIN_CHAT_ID) {
             const groupTicketCaption =
               `🎟️ <b>YANGI CHIPTA SOTILDI / НОВЫЙ БИЛЕТ КУПЛЕН!</b>\n\n` +
