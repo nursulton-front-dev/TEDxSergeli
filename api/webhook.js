@@ -614,6 +614,47 @@ export default async function handler(req, res) {
           });
           return res.status(200).json({ ok: true });
         }
+
+        // Find Ticket command for controllers & admins
+        if (text.startsWith('/find')) {
+          const rawId = text.replace('/find', '').trim();
+          let cleanTid = rawId.replace(/^.*start=scan_/, '').replace(/^scan_/, '').trim().toUpperCase();
+          if (/^\d{6}$/.test(cleanTid)) {
+            cleanTid = `TEDX-${cleanTid}`;
+          }
+
+          let ticket = await kv.get(`ticket:${cleanTid}`);
+          if (!ticket && rawId) {
+            ticket = await kv.get(`ticket:${rawId}`);
+          }
+
+          const activeKeyboard = (await isSuperAdmin(from, chatId)) ? ADMIN_KEYBOARD : SCANNER_KEYBOARD;
+
+          if (!ticket) {
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `❌ Билет <code>${cleanTid || rawId}</code> не найден в системе.`,
+              reply_markup: activeKeyboard
+            });
+            return res.status(200).json({ ok: true });
+          }
+
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: `🔍 <b>ИНФОРМАЦИЯ О БИЛЕТЕ:</b>\n\n` +
+              `🎟 <b>ID:</b> <code>${ticket.id}</code>\n` +
+              `👤 <b>Гость:</b> ${ticket.name || 'Mehmon'}\n` +
+              `📱 <b>Тел:</b> <code>${ticket.phone || 'Noma\'lum'}</code>\n` +
+              `📍 <b>Ряд:</b> ${ticket.row} | <b>Место:</b> ${ticket.seat} (№${ticket.seatNumber})\n` +
+              `🔴 <b>Статус:</b> <b>${(ticket.status || 'valid').toUpperCase()}</b>\n` +
+              `🕒 <b>Выдан:</b> ${ticket.confirmed_at ? new Date(ticket.confirmed_at).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' }) : 'Ранее'}\n` +
+              (ticket.used_at ? `🟢 <b>Отсканирован:</b> ${new Date(ticket.used_at).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })} (@${ticket.scanned_by})` : ''),
+            reply_markup: activeKeyboard
+          });
+          return res.status(200).json({ ok: true });
+        }
       }
 
       // Handle /start command (Normal registration or QR scanner deep link)
