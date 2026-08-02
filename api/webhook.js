@@ -741,7 +741,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
 
-      // 3. User sends Phone -> Move strictly to SELECT_SEAT (Telegram WebApp Mini App)
+      // 3. User sends Phone -> Auto-assign next sequential seat and request payment
       if (user.step === 'PHONE') {
         if (contact) {
           user.phone = contact.phone_number;
@@ -750,35 +750,58 @@ export default async function handler(req, res) {
         }
 
         if (user.phone) {
-          user.step = 'SELECT_SEAT';
+          let totalSold = parseInt((await kv.get('total_tickets_sold')) || 0, 10);
+          let occupiedSeats = (await kv.get('occupied_seats')) || [];
+          let allocatedSeats = (await kv.get('allocated_seats')) || [];
+
+          if (!Array.isArray(occupiedSeats)) occupiedSeats = [];
+          if (!Array.isArray(allocatedSeats)) allocatedSeats = [];
+
+          let nextSeatNumber = totalSold + 1;
+          const allTaken = new Set([...occupiedSeats, ...allocatedSeats]);
+          while (allTaken.has(nextSeatNumber) && nextSeatNumber <= 200) {
+            nextSeatNumber++;
+          }
+          if (nextSeatNumber > 200) nextSeatNumber = 200;
+
+          user.seatNumber = nextSeatNumber;
+          user.seatId = `SEAT-${nextSeatNumber}`;
+          user.step = 'PAYMENT';
+          user.payment_status = 'pending_payment';
           await kv.set(`user:${chatId}`, user);
 
-          const seatPickerUrl = `${PUBLIC_DOMAIN}/seat-picker`;
+          const seatInfo = getSeatDetails(nextSeatNumber);
           const lang = user.lang || 'ru';
 
           let msg = '';
           if (lang === 'uz') {
-            msg = `🎟️ <b>Telefon raqam saqlandi!</b>\n\nEndi quyidagi tugma orqali interaktiv sxemadan o'zingizga yoqqan joyni tanlang:`;
+            msg = `✅ <b>Siz uchun navbatdagi joy ajratildi: #${seatInfo.seatNumber}</b>\n` +
+                  `📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin\n\n` +
+                  `💳 <b>To'lov miqdori:</b> 49 999 UZS\n` +
+                  `💳 <b>Karta raqami:</b> <code>5614 6822 1091 3879</code>\n` +
+                  `👤 <b>Qabul qiluvchi:</b> Abidjanov Baxtiyor\n\n` +
+                  `📸 To'lovni amalga oshirgach, <b>chek (скриншот)</b>ni shu yerga yuboring.`;
           } else if (lang === 'en') {
-            msg = `🎟️ <b>Phone number saved!</b>\n\nNow select your preferred seat on the interactive hall map below:`;
+            msg = `✅ <b>Next available seat assigned to you: #${seatInfo.seatNumber}</b>\n` +
+                  `📍 <b>Seat:</b> ${seatInfo.sectorName}, Row ${seatInfo.row} / Seat ${seatInfo.seat}\n\n` +
+                  `💳 <b>Amount:</b> 49,999 UZS\n` +
+                  `💳 <b>Card Number:</b> <code>5614 6822 1091 3879</code>\n` +
+                  `👤 <b>Recipient:</b> Abidjanov Baxtiyor\n\n` +
+                  `📸 After payment, please send the receipt screenshot here.`;
           } else {
-            msg = `🎟️ <b>Номер телефона сохранен!</b>\n\nТеперь выберите удобное место на интерактивной схеме зала:`;
+            msg = `✅ <b>Вам выделено следующее место по очереди: №${seatInfo.seatNumber}</b>\n` +
+                  `📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место\n\n` +
+                  `💳 <b>Сумма к оплате:</b> 49 999 UZS\n` +
+                  `💳 <b>Номер карты:</b> <code>5614 6822 1091 3879</code>\n` +
+                  `👤 <b>Получатель:</b> Abidjanov Baxtiyor\n\n` +
+                  `📸 После оплаты отправьте <b>скриншот чека</b> в этот чат.`;
           }
 
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
             text: msg,
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: "🎟️ Joyni tanlash (Схема зала)",
-                    web_app: { url: seatPickerUrl }
-                  }
-                ]
-              ]
-            }
+            reply_markup: { remove_keyboard: true }
           });
           return res.status(200).json({ ok: true });
         }
