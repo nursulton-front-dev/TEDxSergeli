@@ -86,7 +86,40 @@ export default async function handler(req, res) {
       }
     }
 
+function getSeatDetails(seatNumber) {
+  const num = parseInt(seatNumber, 10) || 1;
+  const row = Math.ceil(num / 10);
+  const seatInRow = ((num - 1) % 10) + 1;
+  let sectorName = "Sektor 1";
+  if (row > 10) sectorName = "Sektor 2";
+  return { row, seat: seatInRow, sectorName };
+}
+
     let ticket = await kv.get(`ticket:${cleanTicketId}`);
+
+    if (!ticket) {
+      const allUserIds = (await kv.get('all_user_ids')) || [];
+      for (const uid of allUserIds) {
+        const u = await kv.get(`user:${uid}`);
+        if (u && u.ticketId === cleanTicketId) {
+          const seatInfo = getSeatDetails(u.seatNumber || 1);
+          ticket = {
+            id: u.ticketId,
+            userId: uid,
+            name: u.name || 'Mehmon',
+            phone: u.phone || 'Noma\'lum',
+            seat: seatInfo.seat,
+            row: seatInfo.row,
+            seatNumber: u.seatNumber || 1,
+            status: u.ticket_status || (u.payment_status === 'confirmed' ? 'paid' : 'valid'),
+            created_at: u.updated_at || new Date().toISOString(),
+            confirmed_at: u.confirmed_at || new Date().toISOString()
+          };
+          await kv.set(`ticket:${cleanTicketId}`, ticket);
+          break;
+        }
+      }
+    }
 
     if (!ticket) {
       return res.status(404).json({

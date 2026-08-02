@@ -309,15 +309,23 @@ export default async function handler(req, res) {
             }
           }
 
+          const allUserIds = (await kv.get('all_user_ids')) || [];
+          if (Array.isArray(allUserIds)) {
+            for (const uid of allUserIds) {
+              await kv.set(`user:${uid}`, null);
+            }
+          }
+
           await kv.set('occupied_seats', []);
           await kv.set('allocated_seats', []);
           await kv.set('total_tickets_sold', 0);
           await kv.set('all_ticket_ids', []);
+          await kv.set('all_user_ids', []);
 
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `✅ <b>База данных очищена!</b>\nВсе забронированные места и проданные билеты сброшены (0/200).`,
+            text: `✅ <b>База данных очищена!</b>\nВсе забронированные места, билеты и профили пользователей сброшены (0/200).`,
             reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
@@ -626,6 +634,31 @@ export default async function handler(req, res) {
           let ticket = await kv.get(`ticket:${cleanTid}`);
           if (!ticket && rawId) {
             ticket = await kv.get(`ticket:${rawId}`);
+          }
+
+          if (!ticket) {
+            const targetId = cleanTid || rawId;
+            const allUserIds = (await kv.get('all_user_ids')) || [];
+            for (const uid of allUserIds) {
+              const u = await kv.get(`user:${uid}`);
+              if (u && u.ticketId === targetId) {
+                const seatInfo = getSeatDetails(u.seatNumber || 1);
+                ticket = {
+                  id: u.ticketId,
+                  userId: uid,
+                  name: u.name || 'Mehmon',
+                  phone: u.phone || 'Noma\'lum',
+                  seat: seatInfo.seat,
+                  row: seatInfo.row,
+                  seatNumber: u.seatNumber || 1,
+                  status: u.ticket_status || (u.payment_status === 'confirmed' ? 'paid' : 'valid'),
+                  created_at: u.updated_at || Date.now(),
+                  confirmed_at: u.confirmed_at || Date.now()
+                };
+                await kv.set(`ticket:${targetId}`, ticket);
+                break;
+              }
+            }
           }
 
           const activeKeyboard = (await isSuperAdmin(from, chatId)) ? ADMIN_KEYBOARD : SCANNER_KEYBOARD;
