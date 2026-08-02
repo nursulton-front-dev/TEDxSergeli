@@ -1061,42 +1061,67 @@ export default async function handler(req, res) {
         }
 
         if (user.phone) {
-          user.step = 'SEAT_SELECTION';
+          let totalSold = parseInt((await kv.get('total_tickets_sold')) || 0, 10);
+          let occupiedSeats = (await kv.get('occupied_seats')) || [];
+          let allocatedSeats = (await kv.get('allocated_seats')) || [];
+
+          if (!Array.isArray(occupiedSeats)) occupiedSeats = [];
+          if (!Array.isArray(allocatedSeats)) allocatedSeats = [];
+
+          let nextSeatNumber = totalSold + 1;
+          const allTaken = new Set([...occupiedSeats, ...allocatedSeats]);
+          while (allTaken.has(nextSeatNumber) && nextSeatNumber <= 200) {
+            nextSeatNumber++;
+          }
+          if (nextSeatNumber > 200) nextSeatNumber = 200;
+
+          if (!occupiedSeats.includes(nextSeatNumber)) {
+            occupiedSeats.push(nextSeatNumber);
+            await kv.set('occupied_seats', occupiedSeats, 900);
+          }
+
+          user.seatNumber = nextSeatNumber;
+          user.seatId = `SEAT-${nextSeatNumber}`;
+          user.step = 'PAYMENT';
+          user.payment_status = 'pending_payment';
+          user.bookingExpiresAt = Date.now() + 15 * 60 * 1000;
           await kv.set(`user:${chatId}`, user);
 
-          const seatPickerUrl = `${PUBLIC_DOMAIN}/seat-picker`;
+          const seatInfo = getSeatDetails(nextSeatNumber);
           const lang = user.lang || 'ru';
 
           let msg = '';
-          let buttonText = '';
           if (lang === 'uz') {
-            msg = `🎭 <b>TEDxSergeli zalidan joyingizni tanlang!</b>\n\n` +
-              `Interaktiv zal xaritasi orqali o'zingizga yoqqan bo'sh o'rinni tanlash uchun pastdagi <b>🪑 O'rinni tanlash</b> tugmasini bosing:`;
-            buttonText = "🪑 O'rinni tanlash (Zal xaritasi)";
+            msg = `✅ <b>Siz uchun navbatdagi joy ajratildi: #${seatInfo.seatNumber}</b>\n` +
+              `📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin\n\n` +
+              `⏳ <b>Eslatma:</b> To'lov chekini yuborish uchun sizda <b>15 daqiqa</b> bor. Aks holda, ushbu joy boshqa ishtirokchilar uchun ochiladi.\n\n` +
+              `💳 <b>To'lov miqdori:</b> 49 999 UZS\n` +
+              `💳 <b>Karta raqami:</b> <code>5614 6822 1091 3879</code>\n` +
+              `👤 <b>Qabul qiluvchi:</b> Abidjanov Baxtiyor\n\n` +
+              `📸 To'lovni amalga oshirgach, <b>chek (скриншот)</b>ni shu yerga yuboring.`;
           } else if (lang === 'en') {
-            msg = `🎭 <b>Choose your seat at TEDxSergeli!</b>\n\n` +
-              `Press the <b>🪑 Select Seat</b> button below to open the interactive hall map and choose your seat:`;
-            buttonText = "🪑 Select Seat (Hall Map)";
+            msg = `✅ <b>Next available seat assigned to you: #${seatInfo.seatNumber}</b>\n` +
+              `📍 <b>Seat:</b> ${seatInfo.sectorName}, Row ${seatInfo.row} / Seat ${seatInfo.seat}\n\n` +
+              `⏳ <b>Notice:</b> You have <b>15 minutes</b> to send your payment receipt screenshot. Otherwise, your seat reservation will be released to other attendees.\n\n` +
+              `💳 <b>Amount:</b> 49,999 UZS\n` +
+              `💳 <b>Card Number:</b> <code>5614 6822 1091 3879</code>\n` +
+              `👤 <b>Recipient:</b> Abidjanov Baxtiyor\n\n` +
+              `📸 After payment, please send the receipt screenshot here.`;
           } else {
-            msg = `🎭 <b>Выберите ваше место в зале TEDxSergeli!</b>\n\n` +
-              `Нажмите кнопку <b>🪑 Выбрать место</b> ниже, чтобы открыть интерактивную карту зала и выбрать свободное место:`;
-            buttonText = "🪑 Выбрать место (Карта зала)";
+            msg = `✅ <b>Вам выделено следующее место по очереди: №${seatInfo.seatNumber}</b>\n` +
+              `📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место\n\n` +
+              `⏳ <b>Внимание:</b> У вас есть <b>15 минут</b> на отправку чека об оплате. В противном случае забронированное место станет доступным для других участников.\n\n` +
+              `💳 <b>Сумма к оплате:</b> 49 999 UZS\n` +
+              `💳 <b>Номер карты:</b> <code>5614 6822 1091 3879</code>\n` +
+              `👤 <b>Получатель:</b> Abidjanov Baxtiyor\n\n` +
+              `📸 После оплаты отправьте <b>скриншот чека</b> в этот чат.`;
           }
 
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
             text: msg,
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: buttonText,
-                    web_app: { url: seatPickerUrl }
-                  }
-                ]
-              ]
-            }
+            reply_markup: { remove_keyboard: true }
           });
           return res.status(200).json({ ok: true });
         }
