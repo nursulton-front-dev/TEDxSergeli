@@ -1,4 +1,4 @@
-import { Ticket, CreditCard, Send, Sparkles } from 'lucide-react';
+import { CreditCard, Send, Sparkles } from 'lucide-react';
 import { useLang } from '../i18n/LanguageContext';
 import { translations } from '../i18n/translations';
 import AnimatedSection from './AnimatedSection';
