@@ -1,4 +1,4 @@
-import { Ticket, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { useLang } from '../i18n/LanguageContext';
 import { translations } from '../i18n/translations';
 import AnimatedSection from './AnimatedSection';

@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { ArrowDown, Calendar, MapPin, Flame } from 'lucide-react';
+import { ArrowDown, Calendar, MapPin } from 'lucide-react';
 import { useLang } from '../i18n/LanguageContext';
 import { translations } from '../i18n/translations';
 
