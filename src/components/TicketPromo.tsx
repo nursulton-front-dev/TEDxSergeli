@@ -53,7 +53,7 @@ export default function TicketPromo() {
                   {t.features.map((feature, idx) => (
                     <li key={idx} className="flex items-center gap-3">
                       <CheckCircle2 className="w-5 h-5 text-[#E62B1E] flex-shrink-0" />
-                      <span className="text-zinc-700 dark:text-zinc-300 font-medium text-sm md:text-base transition-colors duration-300">
+                      <span className="text-zinc-600 dark:text-zinc-400 font-medium text-sm md:text-base transition-colors duration-300">
                         {feature[lang]}
                       </span>
                     </li>

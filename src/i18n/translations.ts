@@ -304,9 +304,10 @@ export const translations = {
       en: 'TEDxSergeli — a place for inspiring talks, strong networking and new ideas.' 
     },
     features: [
-      { uz: '🎤 6+ ta kuchli spiker nutqi', ru: '🎤 6+ сильных выступлений', en: '🎤 6+ powerful speakers' },
-      { uz: '🤝 Netvorking va coffee-break zone', ru: '🤝 Нетворкинг и кофе-брейк зона', en: '🤝 Networking and coffee break zone' },
-      { uz: "🎁 Esdalik sovg'alari va sertifikat", ru: '🎁 Памятные подарки и сертификат', en: '🎁 Souvenirs and certificate' },
+      { uz: '📜 Rasmiy litsenziyalangan TEDx tadbiri', ru: '📜 Официальное лицензированное событие TEDx', en: '📜 Officially licensed TEDx event' },
+      { uz: '🎤 Mashhur va tajribali spikerlar nutqi', ru: '🎤 Выступления известных спикеров', en: '🎤 Talks by renowned speakers' },
+      { uz: "💡 Yangi g'oyalar va ilhom manbai", ru: '💡 Новые идеи и источник вдохновения', en: '💡 New ideas and source of inspiration' },
+      { uz: '🤝 Kuchli va foydali networking', ru: '🤝 Мощный полезный нетворкинг', en: '🤝 Powerful and valuable networking' },
     ],
     priceLabel: { uz: 'CHIPTA NARXI:', ru: 'СТОИМОСТЬ БИЛЕТА:', en: 'TICKET PRICE:' },
     oldPrice: { uz: '80 000 UZS', ru: '80 000 UZS', en: '80 000 UZS' },
