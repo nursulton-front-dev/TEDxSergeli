@@ -13,6 +13,10 @@ export const SeatPickerApp: React.FC<SeatPickerAppProps> = ({ lang = 'uz' }) => 
     if (window.Telegram?.WebApp) {
       window.Telegram.WebApp.ready();
       window.Telegram.WebApp.expand();
+      const webApp = window.Telegram.WebApp as any;
+      if (webApp.enableClosingConfirmation) {
+        webApp.enableClosingConfirmation();
+      }
     }
 
     const timer = setInterval(() => {
@@ -34,7 +38,20 @@ export const SeatPickerApp: React.FC<SeatPickerAppProps> = ({ lang = 'uz' }) => 
         window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
       }
 
-      // Send payload back to Telegram Bot via WebApp.sendData
+      const user = window.Telegram?.WebApp?.initDataUnsafe?.user;
+      const chatId = user?.id;
+
+      // 1. Direct API call to lock seat & trigger bot message
+      await fetch('/api/select-seat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId,
+          seatNumber: details.seatNumber
+        })
+      });
+
+      // 2. Fallback WebApp.sendData if keyboard button mode
       const payload = JSON.stringify({
         seatNumber: details.seatNumber,
         sector: details.sector,
@@ -45,16 +62,21 @@ export const SeatPickerApp: React.FC<SeatPickerAppProps> = ({ lang = 'uz' }) => 
       });
 
       if (window.Telegram?.WebApp?.sendData) {
-        window.Telegram.WebApp.sendData(payload);
+        try {
+          window.Telegram.WebApp.sendData(payload);
+        } catch (_err) {
+          // sendData may fail if opened via inline keyboard, ignore
+        }
       }
 
+      // Close Mini App
       setTimeout(() => {
         if (window.Telegram?.WebApp?.close) {
           window.Telegram.WebApp.close();
         }
-      }, 200);
+      }, 300);
     } catch (err) {
-      console.error('Error sending WebApp seat data:', err);
+      console.error('Error selecting seat in Mini App:', err);
     }
   };
 
@@ -71,8 +93,8 @@ export const SeatPickerApp: React.FC<SeatPickerAppProps> = ({ lang = 'uz' }) => 
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-between p-2 sm:p-4 select-none">
-      <div className="w-full max-w-5xl mx-auto my-auto">
+    <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-start p-2 sm:p-4 select-none pb-24">
+      <div className="w-full max-w-5xl mx-auto">
         {/* Countdown Timer Banner */}
         <div className="w-full bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 px-4 mb-3 flex items-center justify-between text-xs sm:text-sm font-semibold text-amber-300 backdrop-blur-md">
           <div className="flex items-center gap-2">
