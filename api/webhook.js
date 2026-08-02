@@ -777,6 +777,7 @@ export default async function handler(req, res) {
           if (lang === 'uz') {
             msg = `✅ <b>Siz uchun navbatdagi joy ajratildi: #${seatInfo.seatNumber}</b>\n` +
                   `📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin\n\n` +
+                  `⏳ <b>Eslatma:</b> To'lov chekini yuborish uchun sizda <b>15 daqiqa</b> bor. Aks holda, ushbu joy boshqa ishtirokchilar uchun ochiladi.\n\n` +
                   `💳 <b>To'lov miqdori:</b> 49 999 UZS\n` +
                   `💳 <b>Karta raqami:</b> <code>5614 6822 1091 3879</code>\n` +
                   `👤 <b>Qabul qiluvchi:</b> Abidjanov Baxtiyor\n\n` +
@@ -784,6 +785,7 @@ export default async function handler(req, res) {
           } else if (lang === 'en') {
             msg = `✅ <b>Next available seat assigned to you: #${seatInfo.seatNumber}</b>\n` +
                   `📍 <b>Seat:</b> ${seatInfo.sectorName}, Row ${seatInfo.row} / Seat ${seatInfo.seat}\n\n` +
+                  `⏳ <b>Notice:</b> You have <b>15 minutes</b> to send your payment receipt screenshot. Otherwise, your seat reservation will be released to other attendees.\n\n` +
                   `💳 <b>Amount:</b> 49,999 UZS\n` +
                   `💳 <b>Card Number:</b> <code>5614 6822 1091 3879</code>\n` +
                   `👤 <b>Recipient:</b> Abidjanov Baxtiyor\n\n` +
@@ -791,6 +793,7 @@ export default async function handler(req, res) {
           } else {
             msg = `✅ <b>Вам выделено следующее место по очереди: №${seatInfo.seatNumber}</b>\n` +
                   `📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место\n\n` +
+                  `⏳ <b>Внимание:</b> У вас есть <b>15 минут</b> на отправку чека об оплате. В противном случае забронированное место станет доступным для других участников.\n\n` +
                   `💳 <b>Сумма к оплате:</b> 49 999 UZS\n` +
                   `💳 <b>Номер карты:</b> <code>5614 6822 1091 3879</code>\n` +
                   `👤 <b>Получатель:</b> Abidjanov Baxtiyor\n\n` +
