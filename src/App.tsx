@@ -16,13 +16,28 @@ import { Scanner } from './components/Scanner';
 import { SeatPickerApp } from './components/SeatPickerApp';
 
 export default function App() {
-  const isScannerRoute =
+  const tgStartParam =
     typeof window !== 'undefined' &&
-    (window.location.pathname === '/scanner' || window.location.search.includes('scanner'));
+    ((window as any).Telegram?.WebApp?.initDataUnsafe?.start_param || '');
+
+  const path = typeof window !== 'undefined' ? window.location.pathname : '';
+  const search = typeof window !== 'undefined' ? window.location.search : '';
+
+  const isScannerRoute =
+    path.includes('/scanner') ||
+    search.includes('scanner') ||
+    tgStartParam.includes('scanner');
 
   const isSeatPickerRoute =
-    typeof window !== 'undefined' &&
-    (window.location.pathname === '/seat-picker' || window.location.search.includes('seat-picker'));
+    path.includes('/seat-picker') ||
+    path.includes('/tickets') ||
+    path.includes('/app') ||
+    search.includes('seat-picker') ||
+    search.includes('tickets') ||
+    search.includes('app') ||
+    tgStartParam.includes('seat') ||
+    tgStartParam.includes('tickets') ||
+    tgStartParam.includes('picker');
 
   if (isScannerRoute) {
     return (
