@@ -1,8 +1,8 @@
 {
   "rewrites": [
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/scanner", "destination": "/" },
+    { "source": "/seat-picker", "destination": "/" },
+    { "source": "/app", "destination": "/" },
+    { "source": "/tickets", "destination": "/" }
   ]
 }
