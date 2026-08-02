@@ -44,6 +44,17 @@ const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
 const SUPER_ADMIN_ID = '6804139305'; // Founder Telegram ID
 const API_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
+// Super Admin Persistent Bottom Keyboard Menu
+const ADMIN_KEYBOARD = {
+  keyboard: [
+    [{ text: "📊 Статистика" }, { text: "📋 Контролеры" }],
+    [{ text: "👑 Админы" }, { text: "ℹ️ Инструкция" }],
+    [{ text: "❌ Скрыть меню" }]
+  ],
+  resize_keyboard: true,
+  persistent: true
+};
+
 // Helper to check if a user is Super Admin (Founder or added Co-Admin)
 async function isSuperAdmin(from, chatId) {
   const userIdStr = String(from ? from.id : chatId);
@@ -264,38 +275,56 @@ export default async function handler(req, res) {
       // === SUPER ADMIN COMMAND ENGINE ===
       if (text && (await isSuperAdmin(from, chatId))) {
         
-        // 1. Admin Help / Dashboard (/admin or /help_admin)
-        if (text === '/admin' || text === '/help_admin') {
+        // 0. Hide Keyboard Command
+        if (text === '❌ Скрыть меню') {
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `⚡️ <b>TEDxSergeli SUPER ADMIN DASHBOARD</b>\n\n` +
-                  `👑 <b>Управление Ролями:</b>\n` +
-                  `• <code>/add_admin @username</code> — Назначить Со-Администратора\n` +
-                  `• <code>/del_admin @username</code> — Снять Со-Администратора\n` +
-                  `• <code>/admins</code> — Список всех Администраторов\n\n` +
-                  `🎫 <b>Управление Контролерами Билетов:</b>\n` +
-                  `• <code>/add_scanner @username</code> — Добавить волонтера-контролера\n` +
-                  `• <code>/del_scanner @username</code> — Удалить контролера\n` +
-                  `• <code>/scanners</code> — Список всех активных контролеров\n\n` +
-                  `📊 <b>Статистика и Поиск:</b>\n` +
-                  `• <code>/stats</code> — Живая статистика билетов и входа\n` +
-                  `• <code>/find TEDX-849201</code> — Найти билет по ID\n` +
-                  `• <code>/reset_ticket TEDX-849201</code> — Сбросить статус билета в VALID\n\n` +
-                  `📢 <b>Рассылки:</b>\n` +
-                  `• <code>/broadcast Ваш текст</code> — Рассылка всем пользователям бота`
+            text: `🙈 <b>Клавиатура супер-администратора скрыта.</b>\n\nЧтобы снова открыть меню управления, введите команду <code>/admin</code>`,
+            reply_markup: { remove_keyboard: true }
           });
           return res.status(200).json({ ok: true });
         }
 
-        // 2. Add Super Admin Command: /add_admin @username or /add_admin 123456
+        // 1. Admin Help / Dashboard / Instructions (/admin, /help_admin, "ℹ️ Инструкция")
+        if (text === '/admin' || text === '/help_admin' || text === 'ℹ️ Инструкция') {
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: `⚡️ <b>TEDxSergeli SUPER ADMIN DASHBOARD & ИНСТРУКЦИЯ</b>\n\n` +
+                  `Добро пожаловать в панель управления супер-администратора!\n\n` +
+                  `👑 <b>Управление Администраторами:</b>\n` +
+                  `• <code>/add_admin @username</code> — Назначить Со-Администратора\n` +
+                  `• <code>/del_admin @username</code> — Снять Со-Администратора\n` +
+                  `• <code>/admins</code> — Список всех Администраторов (кнопка <b>👑 Админы</b>)\n\n` +
+                  `🎫 <b>Управление Контролерами Билетов:</b>\n` +
+                  `• <code>/add_scanner @username</code> — Назначить волонтера-контролера\n` +
+                  `• <code>/del_scanner @username</code> — Удалить контролера\n` +
+                  `• <code>/scanners</code> — Список контролеров (кнопка <b>📋 Контролеры</b>)\n\n` +
+                  `📊 <b>Мониторинг и Управление Билетами:</b>\n` +
+                  `• <code>/stats</code> — Живая статистика билетов и входа (кнопка <b>📊 Статистика</b>)\n` +
+                  `• <code>/find TEDX-849201</code> — Найти всю информацию о билете\n` +
+                  `• <code>/reset_ticket TEDX-849201</code> — Сбросить статус билета в VALID\n\n` +
+                  `📢 <b>Массовые Рассылки:</b>\n` +
+                  `• <code>/broadcast Ваш текст</code> — Отправить анонс всем пользователям бота\n\n` +
+                  `📱 <b>Как сканировать QR-коды на входе:</b>\n` +
+                  `1. Откройте камеру смартфона и наведите на QR-код билета.\n` +
+                  `2. Камера откроет ссылку бота. Нажмите <b>START</b>.\n` +
+                  `3. Бот проверит билет: 🟢 <b>ВХОД РАЗРЕШЕН</b> или ⚠️ <b>УЖЕ ИСПОЛЬЗОВАН</b>.`,
+            reply_markup: ADMIN_KEYBOARD
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        // 2. Add Super Admin Command: /add_admin @username
         if (text.startsWith('/add_admin')) {
           const target = text.replace('/add_admin', '').trim().replace('@', '');
           if (!target) {
             await callTelegram('sendMessage', {
               chat_id: chatId,
               parse_mode: 'HTML',
-              text: `⚠️ <b>Использование:</b> <code>/add_admin @username</code>`
+              text: `⚠️ <b>Использование:</b> <code>/add_admin @username</code>`,
+              reply_markup: ADMIN_KEYBOARD
             });
             return res.status(200).json({ ok: true });
           }
@@ -309,7 +338,8 @@ export default async function handler(req, res) {
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `👑 <b>Новый Со-Администратор назначен!</b>\n\n👤 <b>Админ:</b> <code>${target}</code>\nТеперь этому пользователю доступны все команды управления.`
+            text: `👑 <b>Новый Со-Администратор назначен!</b>\n\n👤 <b>Админ:</b> <code>${target}</code>\nТеперь этому пользователю доступны все админ-команды.`,
+            reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
@@ -324,13 +354,14 @@ export default async function handler(req, res) {
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `🗑 <b>Со-Администратор удален:</b> <code>${target}</code>`
+            text: `🗑 <b>Со-Администратор удален:</b> <code>${target}</code>`,
+            reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
 
-        // 4. List Super Admins: /admins
-        if (text === '/admins') {
+        // 4. List Super Admins: /admins or "👑 Админы"
+        if (text === '/admins' || text === '👑 Админы') {
           const extraAdmins = (await kv.get('super_admins')) || [];
           const listStr = extraAdmins.length > 0
             ? extraAdmins.map((a, i) => `${i + 1}. <code>${a}</code>`).join('\n')
@@ -341,7 +372,10 @@ export default async function handler(req, res) {
             parse_mode: 'HTML',
             text: `👑 <b>Список Администраторов TEDxSergeli:</b>\n\n` +
                   `🌟 <b>Главный Создатель (Founder):</b> <code>${SUPER_ADMIN_ID}</code>\n` +
-                  `🛡 <b>Со-Администраторы:</b>\n${listStr}`
+                  `🛡 <b>Со-Администраторы:</b>\n${listStr}\n\n` +
+                  `💡 <i>Добавить админа: <code>/add_admin @username</code></i>\n` +
+                  `💡 <i>Удалить админа: <code>/del_admin @username</code></i>`,
+            reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
@@ -353,7 +387,8 @@ export default async function handler(req, res) {
             await callTelegram('sendMessage', {
               chat_id: chatId,
               parse_mode: 'HTML',
-              text: `⚠️ <b>Использование:</b> <code>/add_scanner @username</code>`
+              text: `⚠️ <b>Использование:</b> <code>/add_scanner @username</code>`,
+              reply_markup: ADMIN_KEYBOARD
             });
             return res.status(200).json({ ok: true });
           }
@@ -367,7 +402,8 @@ export default async function handler(req, res) {
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `✅ <b>Волонтер назначен Контролером билетов!</b>\n\n👤 <b>Контролер:</b> <code>${target}</code>\nМожет сканировать QR-коды на входе.`
+            text: `✅ <b>Волонтер назначен Контролером билетов!</b>\n\n👤 <b>Контролер:</b> <code>${target}</code>\nТеперь он может сканировать QR-коды гостей на входе.`,
+            reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
@@ -382,13 +418,14 @@ export default async function handler(req, res) {
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `🗑 <b>Волонтер удален из контролеров:</b> <code>${target}</code>`
+            text: `🗑 <b>Волонтер удален из контролеров:</b> <code>${target}</code>`,
+            reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
 
-        // 7. List Scanners: /scanners
-        if (text === '/scanners') {
+        // 7. List Scanners: /scanners or "📋 Контролеры"
+        if (text === '/scanners' || text === '📋 Контролеры') {
           const scanners = (await kv.get('allowed_scanners')) || [];
           const listStr = scanners.length > 0
             ? scanners.map((s, i) => `${i + 1}. <code>${s}</code>`).join('\n')
@@ -397,13 +434,16 @@ export default async function handler(req, res) {
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `📋 <b>Авторизованные Контролеры билетов:</b>\n\n${listStr}`
+            text: `📋 <b>Авторизованные Контролеры билетов:</b>\n\n${listStr}\n\n` +
+                  `💡 <i>Добавить контролера: <code>/add_scanner @username</code></i>\n` +
+                  `💡 <i>Удалить контролера: <code>/del_scanner @username</code></i>`,
+            reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
 
-        // 8. Event Statistics Command: /stats
-        if (text === '/stats') {
+        // 8. Event Statistics Command: /stats or "📊 Статистика"
+        if (text === '/stats' || text === '📊 Статистика') {
           const ticketIds = (await kv.get('all_ticket_ids')) || [];
           const allUserIds = (await kv.get('all_user_ids')) || [];
 
@@ -426,7 +466,8 @@ export default async function handler(req, res) {
                   `🎟 <b>Выдано билетов (Подтверждено):</b> ${ticketIds.length}\n\n` +
                   `🟢 <b>Прошли на мероприятие (USED):</b> ${usedCount}\n` +
                   `🟡 <b>Ожидают входа (VALID):</b> ${validCount}\n` +
-                  `📈 <b>Заполняемость зала:</b> ${ticketIds.length > 0 ? Math.round((usedCount / ticketIds.length) * 100) : 0}%`
+                  `📈 <b>Заполняемость зала:</b> ${ticketIds.length > 0 ? Math.round((usedCount / ticketIds.length) * 100) : 0}%`,
+            reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
@@ -438,7 +479,8 @@ export default async function handler(req, res) {
             await callTelegram('sendMessage', {
               chat_id: chatId,
               parse_mode: 'HTML',
-              text: `⚠️ <b>Использование:</b> <code>/find TEDX-849201</code>`
+              text: `⚠️ <b>Использование:</b> <code>/find TEDX-849201</code>`,
+              reply_markup: ADMIN_KEYBOARD
             });
             return res.status(200).json({ ok: true });
           }
@@ -448,7 +490,8 @@ export default async function handler(req, res) {
             await callTelegram('sendMessage', {
               chat_id: chatId,
               parse_mode: 'HTML',
-              text: `❌ Билет <code>${query}</code> не найден.`
+              text: `❌ Билет <code>${query}</code> не найден.`,
+              reply_markup: ADMIN_KEYBOARD
             });
             return res.status(200).json({ ok: true });
           }
@@ -463,7 +506,8 @@ export default async function handler(req, res) {
                   `📍 <b>Ряд:</b> ${ticket.row} | <b>Место:</b> ${ticket.seat}\n` +
                   `🔴 <b>Статус:</b> <b>${ticket.status.toUpperCase()}</b>\n` +
                   `🕒 <b>Выдан:</b> ${new Date(ticket.confirmed_at).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}\n` +
-                  (ticket.used_at ? `🟢 <b>Отсканирован:</b> ${new Date(ticket.used_at).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })} (@${ticket.scanned_by})` : '')
+                  (ticket.used_at ? `🟢 <b>Отсканирован:</b> ${new Date(ticket.used_at).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })} (@${ticket.scanned_by})` : ''),
+            reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
@@ -476,7 +520,8 @@ export default async function handler(req, res) {
             await callTelegram('sendMessage', {
               chat_id: chatId,
               parse_mode: 'HTML',
-              text: `❌ Билет <code>${tid}</code> не найден.`
+              text: `❌ Билет <code>${tid}</code> не найден.`,
+              reply_markup: ADMIN_KEYBOARD
             });
             return res.status(200).json({ ok: true });
           }
@@ -489,7 +534,8 @@ export default async function handler(req, res) {
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `✅ <b>Статус билета <code>${tid}</code> успешно сброшен в VALID!</b>\nТеперь этот билет можно отсканировать снова.`
+            text: `✅ <b>Статус билета <code>${tid}</code> успешно сброшен в VALID!</b>\nТеперь этот билет можно отсканировать снова.`,
+            reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
@@ -501,7 +547,8 @@ export default async function handler(req, res) {
             await callTelegram('sendMessage', {
               chat_id: chatId,
               parse_mode: 'HTML',
-              text: `⚠️ <b>Использование:</b> <code>/broadcast Ваш текст анонса</code>`
+              text: `⚠️ <b>Использование:</b> <code>/broadcast Ваш текст анонса</code>`,
+              reply_markup: ADMIN_KEYBOARD
             });
             return res.status(200).json({ ok: true });
           }
@@ -523,7 +570,8 @@ export default async function handler(req, res) {
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `🚀 <b>Рассылка завершена!</b>\n\nУспешно доставлено <b>${successCount} / ${allUserIds.length}</b> пользователям.`
+            text: `🚀 <b>Рассылка завершена!</b>\n\nУспешно доставлено <b>${successCount} / ${allUserIds.length}</b> пользователям.`,
+            reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
@@ -606,6 +654,16 @@ export default async function handler(req, res) {
         // Standard user /start registration flow
         let user = { step: 'LANG', source: payload, payment_status: 'none' };
         await kv.set(`user:${chatId}`, user);
+
+        // Send Super Admin Keyboard greeting if user is Super Admin
+        if (await isSuperAdmin(from, chatId)) {
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: `👑 <b>Вы авторизованы как Super Admin TEDxSergeli!</b>\n\nИспользуйте меню снизу для управления или команду <code>/admin</code> для вызова справки.`,
+            reply_markup: ADMIN_KEYBOARD
+          });
+        }
 
         await callTelegram('sendMessage', {
           chat_id: chatId,
