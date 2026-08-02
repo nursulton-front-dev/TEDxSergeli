@@ -299,9 +299,24 @@ export const translations = {
     badge: { uz: '🔥 TEZ KUNDA | JOYLAR CHEKLANGAN', ru: '🔥 СКОРО | МЕСТА ОГРАНИЧЕНЫ', en: '🔥 COMING SOON | LIMITED SEATS' },
     title: { uz: 'Joyingizni hoziroq band qiling!', ru: 'Забронируйте свое место прямо сейчас!', en: 'Book your seat right now!' },
     desc: { 
-      uz: "TEDxSergeli — ilhomlantiruvchi nutqlar, kuchli netvorking va yangi g'oyalar jamlangan maskan.", 
-      ru: 'TEDxSergeli — это пространство вдохновляющих выступлений, сильного нетворкинга и новых идей.', 
-      en: 'TEDxSergeli — a place for inspiring talks, strong networking and new ideas.' 
+      uz: "TEDxSergeli Specialized School — ilhomlantiruvchi nutqlar, kuchli networking va yangi g'oyalar jamlangan maskan.", 
+      ru: 'TEDxSergeli Specialized School — место вдохновляющих выступлений, сильного нетворкинга и новых идей.', 
+      en: 'TEDxSergeli Specialized School — a venue for inspiring talks, strong networking, and new ideas.' 
+    },
+    fomoNotice: {
+      uz: "Barcha o'rinlar bir xil narxda! Erta joy band qilish imkoniyati.",
+      ru: "Все места по одной цене! Успейте занять лучшие места заранее.",
+      en: "All seats at the same price! Book early to get the best seats."
+    },
+    soldBadge: {
+      uz: '🔥 75% chiptalar sotildi',
+      ru: '🔥 75% билетов продано',
+      en: '🔥 75% tickets sold'
+    },
+    limitedSeats: {
+      uz: '⚡ Cheklangan 200 ta joy',
+      ru: '⚡ Ограничено 200 мест',
+      en: '⚡ Limited to 200 seats'
     },
     features: [
       { uz: '📜 Rasmiy litsenziyalangan TEDx tadbiri', ru: '📜 Официальное лицензированное событие TEDx', en: '📜 Officially licensed TEDx event' },

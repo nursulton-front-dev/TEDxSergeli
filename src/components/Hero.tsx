@@ -65,34 +65,37 @@ export default function Hero() {
         style={{ opacity: contentOpacity }}
         className="relative z-10 max-w-5xl mx-auto px-6 text-center pt-20"
       >
+        {/* Main Heading: TEDx + Sergeli Specialized School */}
         <motion.h1
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="font-heading"
+          className="font-heading flex flex-col items-center justify-center"
         >
-          <span className="block text-7xl sm:text-8xl md:text-9xl lg:text-[12rem] font-black tracking-tight text-ted-red leading-none drop-shadow-sm">
+          <span className="block text-7xl sm:text-8xl md:text-9xl lg:text-[12rem] font-black tracking-tight text-[#EB0028] leading-none drop-shadow-sm">
             TEDx
+          </span>
+          <span className="block text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-zinc-900 dark:text-white mt-2">
+            Sergeli Specialized School
           </span>
         </motion.h1>
 
+        {/* Theme Block */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="mt-6 md:mt-8"
+          className="mt-8 md:mt-10"
         >
-          <span className="block text-xs sm:text-sm uppercase tracking-[0.2em] text-ted-text-secondary mb-2 font-medium">
+          <span className="block text-xs md:text-sm uppercase tracking-widest text-zinc-400 font-bold mb-2">
             {t.themeLabel[lang]}
           </span>
-          <p className="text-3xl sm:text-4xl md:text-5xl font-black italic text-ted-text">
-            {t.themeName[lang]}
-          </p>
-          <p className="mt-4 max-w-2xl mx-auto text-ted-text-secondary text-base md:text-lg leading-relaxed">
-            {t.subheadline[lang]}
+          <p className="text-2xl md:text-4xl font-bold italic text-red-600 dark:text-red-500">
+            "{t.themeName[lang]}"
           </p>
         </motion.div>
 
+        {/* Info Pills: Date & Location */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -101,7 +104,7 @@ export default function Hero() {
         >
           <div className="flex items-center gap-2 bg-ted-bg-alt px-4 py-2 rounded-full border border-ted-border shadow-sm">
             <Calendar size={16} className="text-ted-red" />
-            <span>{t.date[lang]}</span>
+            <span>📅 {t.date[lang]}</span>
           </div>
           <a 
             href={t.locationLink}
@@ -110,23 +113,19 @@ export default function Hero() {
             className="flex items-center gap-2 bg-ted-bg-alt px-4 py-2 rounded-full border border-ted-border shadow-sm hover:border-ted-red hover:text-ted-red transition-all cursor-pointer"
           >
             <MapPin size={16} className="text-ted-red" />
-            <span>{t.location[lang]}</span>
+            <span>📍 {t.location[lang]}</span>
           </a>
         </motion.div>
 
+        {/* Action Buttons & Scarcity Badge (CTA Buttons Kept Exact) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.8 }}
-          className="mt-10 flex flex-col items-center justify-center gap-4"
+          className="mt-10 flex flex-wrap items-center justify-center gap-4"
         >
-          <div className="inline-flex items-center gap-2 text-xs md:text-sm font-bold text-[#E62B1E] bg-[#E62B1E]/10 px-4 py-1.5 rounded-full animate-pulse border border-[#E62B1E]/20">
-            {t.scarcityBadge[lang]}
-          </div>
-          
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <a
-              href="#tickets"
+          <a
+            href="#tickets"
               className="px-8 py-3.5 bg-ted-red text-white font-bold rounded-xl hover:bg-ted-red-dark transition-all duration-300 hover:shadow-lg hover:shadow-ted-red/30 hover:-translate-y-1"
             >
               {t.applyBtn[lang]}
@@ -137,7 +136,6 @@ export default function Hero() {
             >
               {t.learnMore[lang]}
             </a>
-          </div>
         </motion.div>
       </motion.div>
 

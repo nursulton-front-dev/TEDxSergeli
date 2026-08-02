@@ -12,8 +12,34 @@ import TicketPromo from './components/TicketPromo';
 import CTA from './components/CTA';
 import Footer from './components/Footer';
 import StickyCTA from './components/StickyCTA';
+import { Scanner } from './components/Scanner';
+import { SeatPickerApp } from './components/SeatPickerApp';
 
 export default function App() {
+  const isScannerRoute =
+    typeof window !== 'undefined' &&
+    (window.location.pathname === '/scanner' || window.location.search.includes('scanner'));
+
+  const isSeatPickerRoute =
+    typeof window !== 'undefined' &&
+    (window.location.pathname === '/seat-picker' || window.location.search.includes('seat-picker'));
+
+  if (isScannerRoute) {
+    return (
+      <ThemeProvider>
+        <Scanner />
+      </ThemeProvider>
+    );
+  }
+
+  if (isSeatPickerRoute) {
+    return (
+      <ThemeProvider>
+        <SeatPickerApp />
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider>
       <LanguageProvider>
