@@ -64,7 +64,7 @@ const SCANNER_KEYBOARD = {
     [
       {
         text: "📱 Входной QR-Сканер",
-        web_app: { url: `${PUBLIC_DOMAIN}/scanner` }
+        web_app: { url: `${PUBLIC_DOMAIN}/?route=scanner` }
       }
     ],
     [{ text: "🔍 Проверить билет по ID" }, { text: "📖 Инструкция контролера" }]
@@ -325,7 +325,7 @@ export default async function handler(req, res) {
 
         // Admin Dashboard / Help
         if (text === '/admin' || text === '/help_admin' || text === 'ℹ️ Инструкция' || text === '/scanner' || text === '/checkin' || text === '/scan') {
-          const scannerAppUrl = `${PUBLIC_DOMAIN}/scanner`;
+          const scannerAppUrl = `${PUBLIC_DOMAIN}/?route=scanner`;
 
           await callTelegram('sendMessage', {
             chat_id: chatId,
