@@ -462,9 +462,16 @@ export default async function handler(req, res) {
         // Statistics
         if (text === '/stats' || text === '📊 Статистика') {
           const totalSold = parseInt((await kv.get('total_tickets_sold')) || 0, 10);
+          const allocatedSeats = (await kv.get('allocated_seats')) || [];
           const allTicketIds = (await kv.get('all_ticket_ids')) || [];
           const allUserIds = (await kv.get('all_user_ids')) || [];
           const occupiedSeats = (await kv.get('occupied_seats')) || [];
+
+          const displaySold = Math.max(
+            totalSold,
+            Array.isArray(allocatedSeats) ? allocatedSeats.length : 0,
+            Array.isArray(allTicketIds) ? allTicketIds.length : 0
+          );
 
           let scannedCount = 0;
           for (const tid of allTicketIds) {
@@ -477,7 +484,7 @@ export default async function handler(req, res) {
             parse_mode: 'HTML',
             text: `📊 <b>СТАТИСТИКА TEDxSergeli Specialized School:</b>\n\n` +
                   `👥 <b>Пользователей в боте:</b> ${allUserIds.length}\n` +
-                  `🎟 <b>Продано билетов:</b> ${totalSold} / 200\n` +
+                  `🎟 <b>Продано билетов:</b> ${displaySold} / 200\n` +
                   `⏳ <b>Временно забронировано мест:</b> ${occupiedSeats.length}\n` +
                   `🟢 <b>Прошло через контроль (Вход):</b> ${scannedCount} человек`,
             reply_markup: ADMIN_KEYBOARD
@@ -905,23 +912,28 @@ export default async function handler(req, res) {
         if (action === 'confirm') {
           const ticketId = `TEDX-${Math.floor(100000 + Math.random() * 900000)}`;
 
-          let totalSold = (await kv.get('total_tickets_sold')) || 0;
-          totalSold = parseInt(totalSold, 10) || 0;
+          let allocatedSeats = (await kv.get('allocated_seats')) || [];
+          if (!Array.isArray(allocatedSeats)) allocatedSeats = [];
 
           let seatNumber = user.seatNumber || (user.seatId ? parseInt(String(user.seatId).replace(/\D/g, ''), 10) : null);
 
           if (!seatNumber || seatNumber < 1 || seatNumber > 200) {
-            totalSold++;
-            if (totalSold > 200) totalSold = 200;
-            seatNumber = totalSold;
-            await kv.set('total_tickets_sold', totalSold);
+            seatNumber = allocatedSeats.length + 1;
+            if (seatNumber > 200) seatNumber = 200;
           }
 
-          let allocatedSeats = (await kv.get('allocated_seats')) || [];
-          if (!Array.isArray(allocatedSeats)) allocatedSeats = [];
           if (!allocatedSeats.includes(seatNumber)) {
             allocatedSeats.push(seatNumber);
             await kv.set('allocated_seats', allocatedSeats);
+          }
+
+          const totalSold = allocatedSeats.length;
+          await kv.set('total_tickets_sold', totalSold);
+
+          let occupiedSeats = (await kv.get('occupied_seats')) || [];
+          if (Array.isArray(occupiedSeats)) {
+            occupiedSeats = occupiedSeats.filter((s) => s !== seatNumber);
+            await kv.set('occupied_seats', occupiedSeats);
           }
 
           const seatInfo = getSeatDetails(seatNumber);
