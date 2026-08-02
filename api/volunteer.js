@@ -15,6 +15,7 @@ export default async function handler(req, res) {
     .split(',')
     .map((id) => id.trim())
     .filter(Boolean);
+  const threadId = process.env.TELEGRAM_VOLUNTEER_THREAD_ID;
 
   if (!botToken || chatIds.length === 0) {
     console.error('TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_IDS is not configured');
@@ -25,25 +26,25 @@ export default async function handler(req, res) {
   const trimmedPhone = phone.trim().slice(0, 30);
   const trimmedMessage = typeof message === 'string' ? message.trim().slice(0, 1000) : '';
 
-  const text = [
-    'Yangi volontyor arizasi — TEDxSergeli',
-    '',
-    `Ism: ${trimmedName}`,
-    `Telefon: ${trimmedPhone}`,
-    trimmedMessage ? `Xabar: ${trimmedMessage}` : null,
-  ]
-    .filter(Boolean)
-    .join('\n');
+  const text = `🔥 <b>Yangi volontyor arizasi!</b>\n📍 <i>TEDxSergeliSpecializedSchool</i>\n\n👤 <b>Ism:</b> ${trimmedName}\n📞 <b>Telefon:</b> ${trimmedPhone}${trimmedMessage ? `\n💬 <b>Xabar:</b>\n<i>${trimmedMessage}</i>` : ''}`;
 
   try {
     const results = await Promise.all(
-      chatIds.map((chatId) =>
-        fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      chatIds.map((chatId) => {
+        const payload = {
+          chat_id: chatId,
+          text,
+          parse_mode: 'HTML'
+        };
+        if (threadId) {
+          payload.message_thread_id = threadId;
+        }
+        return fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, text }),
-        })
-      )
+          body: JSON.stringify(payload),
+        });
+      })
     );
 
     const allFailed = results.every((r) => !r.ok);

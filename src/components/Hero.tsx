@@ -103,10 +103,15 @@ export default function Hero() {
             <Calendar size={16} className="text-ted-red" />
             <span>{t.date[lang]}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <a 
+            href={t.locationLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 hover:text-ted-red transition-colors cursor-pointer"
+          >
             <MapPin size={16} className="text-ted-red" />
             <span>{t.location[lang]}</span>
-          </div>
+          </a>
         </motion.div>
 
         <motion.div

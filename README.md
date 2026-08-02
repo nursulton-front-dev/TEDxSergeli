@@ -1,6 +1,6 @@
-# TEDxSergeli
+# TEDxSergeliSpecializedSchool
 
-Official website for TEDxSergeli, built with React, TypeScript, Tailwind CSS and Vite.
+Official website for TEDxSergeliSpecializedSchool, built with React, TypeScript, Tailwind CSS and Vite.
 
 ## Stack
 

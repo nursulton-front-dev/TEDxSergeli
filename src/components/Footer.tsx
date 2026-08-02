@@ -33,21 +33,21 @@ export default function Footer() {
   ];
 
   const socials = [
-    { name: 'Instagram', href: 'https://instagram.com/tedxsergeli', icon: <InstagramIcon /> },
-    { name: 'Telegram', href: 'https://t.me/tedxsergeli', icon: <TelegramIcon /> },
+    { name: 'Instagram', href: 'https://www.instagram.com/tedx.sss', icon: <InstagramIcon /> },
+    { name: 'Telegram', href: 'https://t.me/TEDx_Sergeli_Specialized_School', icon: <TelegramIcon /> },
   ];
 
   return (
-    <footer className="relative overflow-hidden bg-ted-bg px-4 md:px-8 pt-4 pb-6 md:pt-6 md:pb-10">
+    <footer className="relative overflow-hidden bg-ted-bg px-4 md:px-8 pt-2 pb-4 md:pt-4 md:pb-6">
       <div
         className="absolute left-1/2 bottom-0 -translate-x-1/2 w-full max-w-4xl h-[85%] bg-ted-red/25 blur-[110px] rounded-full pointer-events-none"
         aria-hidden="true"
       />
 
-      <div className="relative max-w-7xl mx-auto rounded-[1.75rem] md:rounded-[3rem] bg-gradient-to-br from-ted-red-dark to-ted-red overflow-hidden ring-1 ring-white/10 shadow-2xl shadow-black/20">
-        <div className="px-6 md:px-12 lg:px-16 pt-8 md:pt-12">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 pb-8 md:pb-10 border-b border-white/15">
-            <img src="/tedx-logo-white.png" alt="TEDxSergeli" className="h-12 md:h-14 w-auto" />
+      <div className="relative max-w-[1600px] mx-auto rounded-[1.75rem] md:rounded-[3rem] bg-gradient-to-br from-ted-red-dark to-ted-red overflow-hidden ring-1 ring-white/10 shadow-2xl shadow-black/20">
+        <div className="px-6 md:px-12 lg:px-16 pt-6 md:pt-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 md:pb-8 border-b border-white/15">
+            <img src="/tedx-logo-white.png" alt="TEDxSergeliSpecializedSchool" className="h-12 md:h-14 w-auto" />
             <nav className="flex flex-wrap items-center gap-x-6 gap-y-2">
               {navLinks.map((link) => (
                 <a
@@ -61,9 +61,9 @@ export default function Footer() {
             </nav>
           </div>
 
-          <div className="py-12 md:py-16 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-10">
+          <div className="py-8 md:py-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
             <div className="max-w-xl">
-              <h3 className="text-white text-3xl md:text-4xl lg:text-5xl font-black leading-tight mb-5">
+              <h3 className="text-white text-3xl md:text-4xl lg:text-5xl font-black leading-tight mb-4">
                 {t.headline[lang]}
               </h3>
               <p className="text-white/75 text-base md:text-lg leading-relaxed">
@@ -78,7 +78,7 @@ export default function Footer() {
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-28 md:w-32 flex flex-col items-center gap-2.5 py-5 md:py-6 rounded-2xl bg-white/10 border border-white/15 text-white hover:bg-white/20 hover:border-white/25 transition-all duration-300"
+                  className="w-28 md:w-32 flex flex-col items-center gap-2 py-4 md:py-5 rounded-2xl bg-white/10 border border-white/15 text-white hover:bg-white/20 hover:border-white/25 transition-all duration-300"
                 >
                   {social.icon}
                   <span className="text-sm font-medium">{social.name}</span>
@@ -88,19 +88,29 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-white/15 px-6 md:px-12 lg:px-16 py-6 md:py-7 flex flex-col md:flex-row items-center justify-between gap-3">
-          <p className="text-white/50 text-xs text-center md:text-left">
+        <div className="border-t border-white/15 px-6 md:px-12 lg:px-16 py-4 md:py-5 flex flex-col lg:flex-row items-center justify-between gap-4">
+          <p className="text-white/50 text-xs text-center lg:text-left">
             {t.license[lang]}
           </p>
-          <div className="flex items-center gap-3 text-xs">
+          <div className="flex flex-wrap items-center justify-center lg:justify-end gap-x-3 gap-y-2 text-xs">
+            <a
+              href={translations.hero.locationLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/70 hover:text-white transition-colors flex items-center gap-1.5"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+              {translations.hero.location[lang]}
+            </a>
+            <span className="text-white/30 hidden sm:inline">·</span>
             <a
               href="mailto:tedxsergeli@gmail.com"
               className="text-white/70 hover:text-white transition-colors"
             >
               tedxsergeli@gmail.com
             </a>
-            <span className="text-white/30">·</span>
-            <span className="text-white/50">&copy; {new Date().getFullYear()} TEDxSergeli</span>
+            <span className="text-white/30 hidden sm:inline">·</span>
+            <span className="text-white/50">&copy; {new Date().getFullYear()} TEDxSergeliSpecializedSchool</span>
           </div>
         </div>
       </div>
