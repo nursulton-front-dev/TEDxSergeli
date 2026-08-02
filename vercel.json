@@ -1,8 +1,10 @@
 {
-  "rewrites": [
-    { "source": "/scanner", "destination": "/" },
-    { "source": "/seat-picker", "destination": "/" },
-    { "source": "/app", "destination": "/" },
-    { "source": "/tickets", "destination": "/" }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/scanner", "dest": "/index.html" },
+    { "src": "/seat-picker", "dest": "/index.html" },
+    { "src": "/app", "dest": "/index.html" },
+    { "src": "/tickets", "dest": "/index.html" },
+    { "src": "/(.*)", "dest": "/$1" }
   ]
 }
