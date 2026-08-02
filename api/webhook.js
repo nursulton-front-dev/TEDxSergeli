@@ -1,7 +1,7 @@
 import QRCode from 'qrcode';
 
-const KV_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-const KV_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.KV_URL;
+const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 
 // Lightweight KV implementation for Upstash Redis
 const kv = {
@@ -40,6 +40,8 @@ const kv = {
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
+const VOLUNTEER_THREAD_ID = process.env.TELEGRAM_VOLUNTEER_THREAD_ID || process.env.VOLUNTEER_TOPIC_ID;
+const TICKET_THREAD_ID = process.env.TELEGRAM_TICKET_THREAD_ID || process.env.TOPIC_ID_TICKETS || process.env.TICKETS_TOPIC_ID || process.env.ADMIN_TOPIC_ID;
 const SUPER_ADMIN_ID = '6804139305'; // Founder Telegram ID
 const API_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
@@ -965,7 +967,7 @@ export default async function handler(req, res) {
 
         if (targetAdminGroup) {
           const seatInfo = getSeatDetails(user.seatNumber || 1);
-          await callTelegram('sendPhoto', {
+          const receiptPayload = {
             chat_id: targetAdminGroup,
             photo: photoFileId,
             caption: `📥 <b>YANGI TO'LOV CHEKI / НОВЫЙ ЧЕК ОБ ОПЛАТЕ!</b>\n\n` +
@@ -983,7 +985,13 @@ export default async function handler(req, res) {
                 ]
               ]
             }
-          });
+          };
+
+          if (VOLUNTEER_THREAD_ID) {
+            receiptPayload.message_thread_id = parseInt(VOLUNTEER_THREAD_ID, 10);
+          }
+
+          await callTelegram('sendPhoto', receiptPayload);
         }
         return res.status(200).json({ ok: true });
       }
