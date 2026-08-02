@@ -61,7 +61,7 @@ export default function VolunteerModal({ isOpen, onClose }: Props) {
       });
       if (!res.ok) throw new Error('Request failed');
       setStatus('success');
-    } catch {
+    } catch (_err) {
       setStatus('error');
     }
   };

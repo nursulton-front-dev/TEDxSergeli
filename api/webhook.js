@@ -16,7 +16,7 @@ const kv = {
 
       let parsed = JSON.parse(data.result);
       if (typeof parsed === 'string') {
-        try { parsed = JSON.parse(parsed); } catch { }
+        try { parsed = JSON.parse(parsed); } catch (_err) { }
       }
       return parsed;
     } catch (e) {
@@ -663,7 +663,7 @@ export default async function handler(req, res) {
                 text: `📢 <b>TEDxSergeli Rasmiy E'lon:</b>\n\n${broadcastMsg}`
               });
               if (r && r.ok) successCount++;
-            } catch { }
+            } catch (_bErr) { }
           }
 
           const currentTashkentTime = new Intl.DateTimeFormat('uz-UZ', {
