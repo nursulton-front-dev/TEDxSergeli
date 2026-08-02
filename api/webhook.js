@@ -46,7 +46,7 @@ const SUPER_ADMIN_ID = '6804139305'; // Founder Telegram ID
 const API_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
 // Production WebApp Domain (Prevents Vercel preview login wall)
-const PUBLIC_DOMAIN = process.env.PUBLIC_URL || 'https://tedxsergeli.vercel.app';
+const PUBLIC_DOMAIN = process.env.PUBLIC_URL || 'https://tedx-sergeli.vercel.app';
 
 const ADMIN_KEYBOARD = {
   keyboard: [
@@ -64,7 +64,7 @@ const SCANNER_KEYBOARD = {
     [
       {
         text: "📱 Входной QR-Сканер",
-        web_app: { url: `${PUBLIC_DOMAIN}/?route=scanner` }
+        web_app: { url: `${PUBLIC_DOMAIN}/scanner` }
       }
     ],
     [{ text: "🔍 Проверить билет по ID" }, { text: "📖 Инструкция контролера" }]
@@ -333,7 +333,7 @@ export default async function handler(req, res) {
 
         // Admin Dashboard / Help
         if (text === '/admin' || text === '/help_admin' || text === 'ℹ️ Инструкция' || text === '/scanner' || text === '/checkin' || text === '/scan') {
-          const scannerAppUrl = `${PUBLIC_DOMAIN}/?route=scanner`;
+          const scannerAppUrl = `${PUBLIC_DOMAIN}/scanner`;
 
           await callTelegram('sendMessage', {
             chat_id: chatId,
