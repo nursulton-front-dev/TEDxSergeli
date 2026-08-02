@@ -22,9 +22,15 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Server misconfigured' });
   }
 
-  const trimmedName = name.trim().slice(0, 100);
-  const trimmedPhone = phone.trim().slice(0, 30);
-  const trimmedMessage = typeof message === 'string' ? message.trim().slice(0, 1000) : '';
+  const escapeHtml = (str) =>
+    String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+  const trimmedName = escapeHtml(name.trim().slice(0, 100));
+  const trimmedPhone = escapeHtml(phone.trim().slice(0, 30));
+  const trimmedMessage = typeof message === 'string' ? escapeHtml(message.trim().slice(0, 1000)) : '';
 
   const text = `🔥 <b>Yangi volontyor arizasi!</b>\n📍 <i>TEDxSergeliSpecializedSchool</i>\n\n👤 <b>Ism:</b> ${trimmedName}\n📞 <b>Telefon:</b> ${trimmedPhone}${trimmedMessage ? `\n💬 <b>Xabar:</b>\n<i>${trimmedMessage}</i>` : ''}`;
 
