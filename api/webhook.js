@@ -842,40 +842,30 @@ export default async function handler(req, res) {
           text: texts.photoReply[lang]
         });
 
-        // Notify Admin for approval
-        const targetAdminChats = new Set();
-        if (ADMIN_CHAT_ID) targetAdminChats.add(ADMIN_CHAT_ID);
-        if (SUPER_ADMIN_ID) targetAdminChats.add(SUPER_ADMIN_ID);
+        // Notify Admin Group for approval
+        const targetAdminGroup = ADMIN_CHAT_ID || SUPER_ADMIN_ID;
 
-        const seatInfo = getSeatDetails(user.seatNumber || 1);
-        const adminPhotoPayload = {
-          photo: photoFileId,
-          caption: `📥 <b>YANGI TO'LOV CHEKI / НОВЫЙ ЧЕК ОБ ОПЛАТЕ!</b>\n\n` +
-                   `👤 <b>Ism / Имя:</b> ${user.name || 'Noma\'lum'}\n` +
-                   `📱 <b>Тел:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
-                   `📍 <b>Mavjud joy:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
-                   `🌐 <b>Til:</b> ${(user.lang || 'ru').toUpperCase()}\n` +
-                   `🆔 <b>User ID:</b> <code>${chatId}</code>`,
-          parse_mode: 'HTML',
-          reply_markup: {
-            inline_keyboard: [
-              [
-                { text: "✅ Tasdiqlash (Подтвердить)", callback_data: `confirm_${chatId}` },
-                { text: "❌ Rad etish (Отклонить)", callback_data: `reject_${chatId}` }
+        if (targetAdminGroup) {
+          const seatInfo = getSeatDetails(user.seatNumber || 1);
+          await callTelegram('sendPhoto', {
+            chat_id: targetAdminGroup,
+            photo: photoFileId,
+            caption: `📥 <b>YANGI TO'LOV CHEKI / НОВЫЙ ЧЕК ОБ ОПЛАТЕ!</b>\n\n` +
+                     `👤 <b>Ism / Имя:</b> ${user.name || 'Noma\'lum'}\n` +
+                     `📱 <b>Тел:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
+                     `📍 <b>Mavjud joy:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
+                     `🌐 <b>Til:</b> ${(user.lang || 'ru').toUpperCase()}\n` +
+                     `🆔 <b>User ID:</b> <code>${chatId}</code>`,
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: "✅ Tasdiqlash (Подтвердить)", callback_data: `confirm_${chatId}` },
+                  { text: "❌ Rad etish (Отклонить)", callback_data: `reject_${chatId}` }
+                ]
               ]
-            ]
-          }
-        };
-
-        for (const targetChatId of targetAdminChats) {
-          try {
-            await callTelegram('sendPhoto', {
-              ...adminPhotoPayload,
-              chat_id: targetChatId
-            });
-          } catch (err) {
-            console.error(`Failed to send receipt to admin chat ${targetChatId}:`, err);
-          }
+            }
+          });
         }
         return res.status(200).json({ ok: true });
       }

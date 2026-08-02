@@ -47,7 +47,11 @@ export default function Footer() {
       <div className="relative max-w-[1600px] mx-auto rounded-[1.75rem] md:rounded-[3rem] bg-gradient-to-br from-ted-red-dark to-ted-red overflow-hidden ring-1 ring-white/10 shadow-2xl shadow-black/20">
         <div className="px-6 md:px-12 lg:px-16 pt-6 md:pt-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 md:pb-8 border-b border-white/15">
-            <img src="/tedx-logo-white.png" alt="TEDxSergeliSpecializedSchool" className="h-12 md:h-14 w-auto" />
+            <img
+              src="/tedx-logo-white.png"
+              alt="TEDxSergeliSpecializedSchool"
+              className="h-10 sm:h-12 md:h-14 w-auto max-w-[280px] object-contain shrink-0"
+            />
             <nav className="flex flex-wrap items-center gap-x-6 gap-y-2">
               {navLinks.map((link) => (
                 <a
