@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { ArrowDown, Calendar, MapPin } from 'lucide-react';
+import { ArrowDown, Calendar, MapPin, Flame } from 'lucide-react';
 import { useLang } from '../i18n/LanguageContext';
 import { translations } from '../i18n/translations';
 
@@ -63,7 +63,7 @@ export default function Hero() {
 
       <motion.div
         style={{ opacity: contentOpacity }}
-        className="relative z-10 max-w-5xl mx-auto px-6 text-center"
+        className="relative z-10 max-w-5xl mx-auto px-6 text-center pt-20"
       >
         <motion.h1
           initial={{ opacity: 0, y: 40 }}
@@ -71,35 +71,35 @@ export default function Hero() {
           transition={{ duration: 0.8, delay: 0.2 }}
           className="font-heading"
         >
-          <span className="block text-6xl sm:text-8xl md:text-9xl lg:text-[10rem] font-black tracking-tight text-ted-red leading-none">
+          <span className="block text-7xl sm:text-8xl md:text-9xl lg:text-[12rem] font-black tracking-tight text-ted-red leading-none drop-shadow-sm">
             TEDx
-          </span>
-          <span className="block mt-3 md:mt-4 text-xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-ted-text">
-            Sergeli Specialized School
           </span>
         </motion.h1>
 
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.55 }}
-          className="mt-8 md:mt-9"
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="mt-6 md:mt-8"
         >
-          <span className="block text-xs sm:text-sm uppercase tracking-[0.2em] text-ted-text-secondary mb-2">
+          <span className="block text-xs sm:text-sm uppercase tracking-[0.2em] text-ted-text-secondary mb-2 font-medium">
             {t.themeLabel[lang]}
           </span>
-          <p className="text-2xl sm:text-3xl md:text-4xl font-semibold italic text-ted-red">
+          <p className="text-3xl sm:text-4xl md:text-5xl font-black italic text-ted-text">
             {t.themeName[lang]}
+          </p>
+          <p className="mt-4 max-w-2xl mx-auto text-ted-text-secondary text-base md:text-lg leading-relaxed">
+            {t.subheadline[lang]}
           </p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.75 }}
-          className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-ted-text-secondary"
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="mt-8 flex flex-wrap items-center justify-center gap-4 text-sm text-ted-text font-medium"
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-ted-bg-alt px-4 py-2 rounded-full border border-ted-border shadow-sm">
             <Calendar size={16} className="text-ted-red" />
             <span>{t.date[lang]}</span>
           </div>
@@ -107,7 +107,7 @@ export default function Hero() {
             href={t.locationLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 hover:text-ted-red transition-colors cursor-pointer"
+            className="flex items-center gap-2 bg-ted-bg-alt px-4 py-2 rounded-full border border-ted-border shadow-sm hover:border-ted-red hover:text-ted-red transition-all cursor-pointer"
           >
             <MapPin size={16} className="text-ted-red" />
             <span>{t.location[lang]}</span>
@@ -117,21 +117,27 @@ export default function Hero() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.95 }}
-          className="mt-10 flex flex-wrap items-center justify-center gap-4"
+          transition={{ duration: 0.8, delay: 0.8 }}
+          className="mt-10 flex flex-col items-center justify-center gap-4"
         >
-          <a
-            href="#tickets"
-            className="px-8 py-3.5 bg-ted-red text-white font-semibold rounded hover:bg-ted-red-dark transition-all duration-300 hover:shadow-lg hover:shadow-ted-red/20"
-          >
-            {t.applyBtn[lang]}
-          </a>
-          <a
-            href="#about"
-            className="px-8 py-3.5 border border-ted-border text-ted-text font-medium rounded hover:border-ted-red hover:text-ted-red transition-all duration-300"
-          >
-            {t.learnMore[lang]}
-          </a>
+          <div className="inline-flex items-center gap-2 text-xs md:text-sm font-bold text-[#E62B1E] bg-[#E62B1E]/10 px-4 py-1.5 rounded-full animate-pulse border border-[#E62B1E]/20">
+            {t.scarcityBadge[lang]}
+          </div>
+          
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <a
+              href="#tickets"
+              className="px-8 py-3.5 bg-ted-red text-white font-bold rounded-xl hover:bg-ted-red-dark transition-all duration-300 hover:shadow-lg hover:shadow-ted-red/30 hover:-translate-y-1"
+            >
+              {t.applyBtn[lang]}
+            </a>
+            <a
+              href="#about"
+              className="px-8 py-3.5 border-2 border-ted-border text-ted-text font-bold rounded-xl hover:border-ted-red hover:text-ted-red transition-all duration-300 hover:-translate-y-1"
+            >
+              {t.learnMore[lang]}
+            </a>
+          </div>
         </motion.div>
       </motion.div>
 

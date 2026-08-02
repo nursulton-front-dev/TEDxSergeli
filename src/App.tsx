@@ -11,6 +11,7 @@ import Team from './components/Team';
 import TicketPromo from './components/TicketPromo';
 import CTA from './components/CTA';
 import Footer from './components/Footer';
+import StickyCTA from './components/StickyCTA';
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
         <TicketPromo />
         <CTA />
         <Footer />
+        <StickyCTA />
       </LanguageProvider>
     </ThemeProvider>
   );

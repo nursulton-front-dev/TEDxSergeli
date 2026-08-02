@@ -21,6 +21,16 @@ export const translations = {
       ru: 'За гранью очевидного',
       en: 'Beyond the Obvious',
     },
+    subheadline: {
+      uz: "Dunyoni boshqacha ko'rishga undovchi 7 ta ilhomlantiruvchi g'oya. Kuchli netvorking va soha yetakchilari bilan uchrashuv.",
+      ru: "7 вдохновляющих идей, которые изменят ваш взгляд на мир. Мощный нетворкинг и инсайты от лидеров индустрии.",
+      en: "7 inspiring ideas that will change your perspective. Powerful networking and insights from industry leaders."
+    },
+    scarcityBadge: {
+      uz: "🔥 Atigi 15% chiptalar qoldi",
+      ru: "🔥 Осталось всего 15% билетов",
+      en: "🔥 Only 15% of tickets left"
+    },
     date: {
       uz: '4-sentabr, 2026',
       ru: '4 сентября 2026',
@@ -91,6 +101,14 @@ export const translations = {
       ru: 'Вдохновляющие спикеры будут объявлены в ближайшее время. Следите за обновлениями!',
       en: 'Inspiring speakers will be announced soon. Stay tuned!',
     },
+    teasers: [
+      { uz: "Maxfiy mehmon", ru: "Секретный гость", en: "Secret Guest" },
+      { uz: "Tech-tadbirkor", ru: "Tech-предприниматель", en: "Tech Entrepreneur" },
+      { uz: "AI bo'yicha ekspert", ru: "Известный эксперт по ИИ", en: "Renowned AI Expert" },
+      { uz: "Top-menejer", ru: "Топ-менеджер", en: "Top Manager" },
+      { uz: "Kreator", ru: "Известный креатор", en: "Famous Creator" },
+      { uz: "Innovator", ru: "Инноватор", en: "Innovator" },
+    ],
     tba: { uz: 'Tez kunda', ru: 'Скоро', en: 'Coming soon' },
     topic: { uz: "Ma'ruza mavzusi", ru: 'Тема выступления', en: 'Talk topic' },
   },
