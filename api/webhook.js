@@ -1,4 +1,34 @@
-import { kv } from '@vercel/kv';
+const KV_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+const KV_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+
+// Lightweight KV implementation to avoid @vercel/kv deprecation issues
+const kv = {
+  get: async (key) => {
+    if (!KV_URL) return null;
+    try {
+      const res = await fetch(`${KV_URL}/get/${key}`, {
+        headers: { Authorization: `Bearer ${KV_TOKEN}` }
+      });
+      const data = await res.json();
+      return data.result ? JSON.parse(data.result) : null;
+    } catch (e) {
+      console.error('KV GET Error:', e);
+      return null;
+    }
+  },
+  set: async (key, value) => {
+    if (!KV_URL) return;
+    try {
+      await fetch(`${KV_URL}/set/${key}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${KV_TOKEN}` },
+        body: JSON.stringify(typeof value === 'object' ? JSON.stringify(value) : value)
+      });
+    } catch (e) {
+      console.error('KV SET Error:', e);
+    }
+  }
+};
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
