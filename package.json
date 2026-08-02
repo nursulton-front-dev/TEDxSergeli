@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && mkdir -p dist/scanner dist/seat-picker dist/app dist/tickets && cp dist/index.html dist/scanner/index.html && cp dist/index.html dist/seat-picker/index.html && cp dist/index.html dist/app/index.html && cp dist/index.html dist/tickets/index.html",
+    "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
   },
