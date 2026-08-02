@@ -1,10 +1,1 @@
-{
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/scanner", "dest": "/index.html" },
-    { "src": "/seat-picker", "dest": "/index.html" },
-    { "src": "/app", "dest": "/index.html" },
-    { "src": "/tickets", "dest": "/index.html" },
-    { "src": "/(.*)", "dest": "/$1" }
-  ]
-}
+{}
