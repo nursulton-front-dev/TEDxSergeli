@@ -972,11 +972,12 @@ export default async function handler(req, res) {
               `📐 <b>O'rin:</b> ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (Umumiy №${seatInfo.seatNumber})\n` +
               `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n\n` +
               `📅 <b>Sana:</b> 4-sentabr, 2026\n` +
-              `📍 <b>Manzil:</b> Sergeli Ixtisoslashtirilgan Maktabi\n\n` +
-              `📌 <b>Kirish qoidalari:</b>\n` +
+              `📍 <b>Manzil:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Ixtisoslashtirilgan Maktabi (Google Maps)</a>\n\n` +
+              `📌 <b>Kirish qoidalari (TEDx Rules):</b>\n` +
               `• 1️⃣ Tadbir kunida ushbu QR-kodni nazoratchiga ko'rsating.\n` +
-              `• 2️⃣ Telefon ekranidan ko'rsatish yoki qog'ozga chiqarib kelish mumkin.\n` +
-              `• 3️⃣ Har bir QR-kod faqat 1 marotaba kirish uchun amal qiladi.`;
+              `• 2️⃣ Eshiklar soat 13:30 da yopiladi. Kechikmang!\n` +
+              `• 3️⃣ Har bir QR-kod faqat 1 marotaba kirish uchun amal qiladi.\n\n` +
+              `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
           } else if (userLang === 'en') {
             ticketCaption =
               `🎉 <b>Payment confirmed!</b>\n\n` +
@@ -986,11 +987,12 @@ export default async function handler(req, res) {
               `📐 <b>Seat:</b> Row ${seatInfo.row} / Seat ${seatInfo.seat} (Total №${seatInfo.seatNumber})\n` +
               `🔑 <b>Ticket ID:</b> <code>${ticketId}</code>\n\n` +
               `📅 <b>Date:</b> September 4, 2026\n` +
-              `📍 <b>Location:</b> Sergeli Specialized School\n\n` +
-              `📌 <b>Entrance Rules:</b>\n` +
+              `📍 <b>Location:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Specialized School (Google Maps)</a>\n\n` +
+              `📌 <b>Entrance Rules (TEDx Rules):</b>\n` +
               `• 1️⃣ Show this QR code to the scanner on the day of the event.\n` +
-              `• 2️⃣ You can show it on your phone screen or print on paper.\n` +
-              `• 3️⃣ Each QR code is valid for 1 entry only.`;
+              `• 2️⃣ Doors close at 13:30. Please arrive on time!\n` +
+              `• 3️⃣ Each QR code is valid for 1 entry only.\n\n` +
+              `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
           } else {
             ticketCaption =
               `🎉 <b>Оплата подтверждена!</b>\n\n` +
@@ -1000,11 +1002,12 @@ export default async function handler(req, res) {
               `📐 <b>Место:</b> ${seatInfo.row}-ряд / ${seatInfo.seat}-место (Общий №${seatInfo.seatNumber})\n` +
               `🔑 <b>ID Билета:</b> <code>${ticketId}</code>\n\n` +
               `📅 <b>Дата:</b> 4 сентября 2026\n` +
-              `📍 <b>Адрес:</b> Специализированная школа Сергели\n\n` +
-              `📌 <b>Правила входа:</b>\n` +
-              `• 1️⃣ Обязательно покажите этот QR-код на входе в день мероприятия.\n` +
-              `• 2️⃣ Можно показать с экрана телефона или распечатать.\n` +
-              `• 3️⃣ Каждый QR-код действителен только для 1 входа.`;
+              `📍 <b>Адрес:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Специализированная школа Сергели (Google Maps)</a>\n\n` +
+              `📌 <b>Правила входа (Правила TEDx):</b>\n` +
+              `• 1️⃣ Покажите этот QR-код контролеру на входе в день мероприятия.\n` +
+              `• 2️⃣ Двери закрываются в 13:30. Пожалуйста, не опаздывайте!\n` +
+              `• 3️⃣ Каждый QR-код действителен только для 1 входа.\n\n` +
+              `ℹ️ <i>TEDxSergeli — независимое мероприятие, проводимое по лицензии TED.</i>`;
           }
 
           if (photoBuffer) {

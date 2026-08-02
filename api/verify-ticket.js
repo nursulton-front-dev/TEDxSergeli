@@ -54,19 +54,28 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, reason: 'missing_id', message: 'Chipta kodi ko\'rsatilmadi!' });
     }
 
-    const cleanTicketId = String(ticketId).replace('scan_', '').replace(/^https?:\/\/t\.me\/[^\?]+\?start=scan_/, '').trim();
+    let cleanTicketId = String(ticketId)
+      .replace(/^.*start=scan_/, '')
+      .replace(/^scan_/, '')
+      .trim();
+
+    if (/^\d{6}$/.test(cleanTicketId)) {
+      cleanTicketId = `TEDX-${cleanTicketId}`;
+    }
 
     // Check volunteer authorization if volunteerId is supplied
     if (volunteerId) {
-      const superAdminId = parseInt(process.env.SUPER_ADMIN_ID || '1338879669', 10);
-      const volunteers = (await kv.get('volunteers')) || [];
-      const admins = (await kv.get('admins')) || [];
-      const volId = parseInt(volunteerId, 10);
+      const superAdminId = '6804139305';
+      const adminChatId = String(process.env.ADMIN_CHAT_ID || '');
+      const scanners = (await kv.get('allowed_scanners')) || [];
+      const superAdmins = (await kv.get('super_admins')) || [];
+      const volIdStr = String(volunteerId);
 
       const isAuthorized =
-        volId === superAdminId ||
-        (Array.isArray(volunteers) && volunteers.includes(volId)) ||
-        (Array.isArray(admins) && admins.includes(volId));
+        volIdStr === superAdminId ||
+        volIdStr === adminChatId ||
+        (Array.isArray(scanners) && scanners.some(s => String(s).toLowerCase() === volIdStr.toLowerCase())) ||
+        (Array.isArray(superAdmins) && superAdmins.some(a => String(a).toLowerCase() === volIdStr.toLowerCase()));
 
       if (!isAuthorized) {
         return res.status(403).json({
