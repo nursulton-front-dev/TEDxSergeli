@@ -1096,6 +1096,39 @@ export default async function handler(req, res) {
             });
           }
 
+          // Duplicate Ticket photo to Admin Group Topic ("Tickets")
+          const TICKETS_TOPIC_ID = process.env.TOPIC_ID_TICKETS || process.env.TICKETS_TOPIC_ID || process.env.ADMIN_TOPIC_ID;
+          if (ADMIN_CHAT_ID) {
+            const groupTicketCaption =
+              `🎟️ <b>YANGI CHIPTA SOTILDI / НОВЫЙ БИЛЕТ КУПЛЕН!</b>\n\n` +
+              `👤 <b>Имя / Ism:</b> ${user.name || 'Mehmon'}\n` +
+              `📍 <b>Место / Joy:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
+              `📱 <b>Телефон / Telegram:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
+              `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n` +
+              `💳 <b>Сумма:</b> 49,999 UZS\n` +
+              `✅ <b>Одобрил:</b> @${adminUsername}`;
+
+            const extraOpts = {};
+            if (TICKETS_TOPIC_ID) {
+              extraOpts.message_thread_id = parseInt(TICKETS_TOPIC_ID, 10);
+            }
+
+            try {
+              if (photoBuffer) {
+                await callTelegramPhoto(ADMIN_CHAT_ID, photoBuffer, groupTicketCaption, extraOpts);
+              } else {
+                await callTelegram('sendMessage', {
+                  chat_id: ADMIN_CHAT_ID,
+                  parse_mode: 'HTML',
+                  text: groupTicketCaption,
+                  ...extraOpts
+                });
+              }
+            } catch (dupErr) {
+              console.error('Failed to duplicate ticket to admin group:', dupErr);
+            }
+          }
+
           await callTelegram('editMessageCaption', {
             chat_id: message.chat.id,
             message_id: message.message_id,
