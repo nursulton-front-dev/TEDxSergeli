@@ -150,6 +150,21 @@ export const translations = {
       },
     ],
   },
+  sponsors: {
+    label: { uz: 'Homiylar', ru: 'Спонсоры', en: 'Sponsors' },
+    titleStart: { uz: 'Bizning', ru: 'Наши', en: 'Our' },
+    titleAccent: { uz: 'hamkorlar', ru: 'партнеры', en: 'partners' },
+    subtitle: {
+      uz: 'Tadbirimizni qo\'llab-quvvatlayotgan tashkilotlarga minnatdorchilik bildiramiz.',
+      ru: 'Мы благодарим организации, поддерживающие наше мероприятие.',
+      en: 'We thank the organizations supporting our event.'
+    },
+    gold: { uz: 'Oltin homiylar', ru: 'Золотые спонсоры', en: 'Gold Sponsors' },
+    silver: { uz: 'Kumush homiylar', ru: 'Серебряные спонсоры', en: 'Silver Sponsors' },
+    bronze: { uz: 'Bronza homiylar', ru: 'Бронзовые спонсоры', en: 'Bronze Sponsors' },
+    logoPlaceholder: { uz: 'Logotip', ru: 'Логотип', en: 'Logo' },
+    becomeBtn: { uz: 'Homiy bo\'lish', ru: 'Стать спонсором', en: 'Become a Sponsor' },
+  },
   team: {
     label: { uz: 'Jamoa', ru: 'Команда', en: 'Team' },
     titleStart: { uz: 'Sahna ortidagi', ru: 'Люди за', en: 'The people' },
