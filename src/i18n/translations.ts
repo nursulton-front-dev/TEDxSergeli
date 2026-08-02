@@ -278,13 +278,20 @@ export const translations = {
     },
   },
   tickets: {
-    title: { uz: 'Qatnashmoqchimisiz?', ru: 'Хотите участвовать?', en: 'Want to participate?' },
+    badge: { uz: '🔥 TEZ KUNDA | JOYLAR CHEKLANGAN', ru: '🔥 СКОРО | МЕСТА ОГРАНИЧЕНЫ', en: '🔥 COMING SOON | LIMITED SEATS' },
+    title: { uz: 'Joyingizni hoziroq band qiling!', ru: 'Забронируйте свое место прямо сейчас!', en: 'Book your seat right now!' },
     desc: { 
-      uz: "Siz o'z qulayligingiz uchun to'layapsiz 😊. Ulgurib qoling, joylar soni cheklangan!", 
-      ru: 'Вы платите за своё удобство 😊. Успейте, количество мест ограничено!', 
-      en: 'You are paying for your own convenience 😊. Hurry up, seats are limited!' 
+      uz: "TEDxSergeli — ilhomlantiruvchi nutqlar, kuchli netvorking va yangi g'oyalar jamlangan maskan.", 
+      ru: 'TEDxSergeli — это пространство вдохновляющих выступлений, сильного нетворкинга и новых идей.', 
+      en: 'TEDxSergeli — a place for inspiring talks, strong networking and new ideas.' 
     },
-    priceLabel: { uz: 'Chipta narxi:', ru: 'Стоимость билета:', en: 'Ticket price:' },
+    features: [
+      { uz: '🎤 6+ ta kuchli spiker nutqi', ru: '🎤 6+ сильных выступлений', en: '🎤 6+ powerful speakers' },
+      { uz: '🤝 Netvorking va coffee-break zone', ru: '🤝 Нетворкинг и кофе-брейк зона', en: '🤝 Networking and coffee break zone' },
+      { uz: "🎁 Esdalik sovg'alari va sertifikat", ru: '🎁 Памятные подарки и сертификат', en: '🎁 Souvenirs and certificate' },
+    ],
+    priceLabel: { uz: 'CHIPTA NARXI:', ru: 'СТОИМОСТЬ БИЛЕТА:', en: 'TICKET PRICE:' },
+    oldPrice: { uz: '80 000 UZS', ru: '80 000 UZS', en: '80 000 UZS' },
     price: { uz: '49 999 UZS', ru: '49 999 UZS', en: '49 999 UZS' },
     ctaBtn: { uz: 'Telegram orqali xarid qilish', ru: 'Купить через Telegram', en: 'Buy via Telegram' },
     time: {
