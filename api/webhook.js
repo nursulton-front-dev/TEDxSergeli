@@ -591,15 +591,15 @@ export default async function handler(req, res) {
             chat_id: chatId,
             parse_mode: 'HTML',
             text: `📖 <b>ИНСТРУКЦИЯ ДЛЯ КОНТРОЛЁРОВ TEDxSergeli:</b>\n\n` +
-                  `1️⃣ <b>Проверка через QR-сканер:</b>\n` +
-                  `• Нажмите кнопку <b>📱 Входной QR-Сканер</b> внизу.\n` +
-                  `• Наведите камеру на QR-код на билете гостя.\n` +
-                  `• Зелёный экран = ГОСТЬ ПРОПУЩЕН ✅\n` +
-                  `• Красный экран = БИЛЕТ УЖЕ ИСПОЛЬЗОВАН 🛑\n\n` +
-                  `2️⃣ <b>Проверка вручную (без QR):</b>\n` +
-                  `• Отправьте боту <code>/find ID</code> (например, <code>/find 947695</code>).\n` +
-                  `• Или нажмите <b>🔍 Проверить билет по ID</b>.\n` +
-                  `• Бот покажет статус билета, ФИО гостя и место.`,
+              `1️⃣ <b>Проверка через QR-сканер:</b>\n` +
+              `• Нажмите кнопку <b>📱 Входной QR-Сканер</b> внизу.\n` +
+              `• Наведите камеру на QR-код на билете гостя.\n` +
+              `• Зелёный экран = ГОСТЬ ПРОПУЩЕН ✅\n` +
+              `• Красный экран = БИЛЕТ УЖЕ ИСПОЛЬЗОВАН 🛑\n\n` +
+              `2️⃣ <b>Проверка вручную (без QR):</b>\n` +
+              `• Отправьте боту <code>/find ID</code> (например, <code>/find 947695</code>).\n` +
+              `• Или нажмите <b>🔍 Проверить билет по ID</b>.\n` +
+              `• Бот покажет статус билета, ФИО гостя и место.`,
             reply_markup: SCANNER_KEYBOARD
           });
           return res.status(200).json({ ok: true });
@@ -739,22 +739,22 @@ export default async function handler(req, res) {
           let msg = '';
           if (userLang === 'uz') {
             msg = `🎉 <b>Hush kelibsiz! Sizda faol TEDxSergeli elektron chiptangiz bor.</b>\n\n` +
-                  `🎟 <b>Chipta ID:</b> <code>${existingUser.ticketId}</code>\n` +
-                  `📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin\n` +
-                  `👤 <b>Ism:</b> ${existingUser.name || 'Mehmon'}\n\n` +
-                  `📱 <i>Kirish joyida chiptangizdagi QR-kodni ko'rsatishingiz kifoya.</i>`;
+              `🎟 <b>Chipta ID:</b> <code>${existingUser.ticketId}</code>\n` +
+              `📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin\n` +
+              `👤 <b>Ism:</b> ${existingUser.name || 'Mehmon'}\n\n` +
+              `📱 <i>Kirish joyida chiptangizdagi QR-kodni ko'rsatishingiz kifoya.</i>`;
           } else if (userLang === 'en') {
             msg = `🎉 <b>Welcome back! You have an active TEDxSergeli ticket.</b>\n\n` +
-                  `🎟 <b>Ticket ID:</b> <code>${existingUser.ticketId}</code>\n` +
-                  `📍 <b>Seat:</b> ${seatInfo.sectorName}, Row ${seatInfo.row} / Seat ${seatInfo.seat}\n` +
-                  `👤 <b>Name:</b> ${existingUser.name || 'Guest'}\n\n` +
-                  `📱 <i>Just show your QR code ticket at the entrance.</i>`;
+              `🎟 <b>Ticket ID:</b> <code>${existingUser.ticketId}</code>\n` +
+              `📍 <b>Seat:</b> ${seatInfo.sectorName}, Row ${seatInfo.row} / Seat ${seatInfo.seat}\n` +
+              `👤 <b>Name:</b> ${existingUser.name || 'Guest'}\n\n` +
+              `📱 <i>Just show your QR code ticket at the entrance.</i>`;
           } else {
             msg = `🎉 <b>С возвращением! У вас есть активный электронный билет TEDxSergeli.</b>\n\n` +
-                  `🎟 <b>ID Билета:</b> <code>${existingUser.ticketId}</code>\n` +
-                  `📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место\n` +
-                  `👤 <b>Имя:</b> ${existingUser.name || 'Гость'}\n\n` +
-                  `📱 <i>На входе достаточно показать ваш QR-код билет.</i>`;
+              `🎟 <b>ID Билета:</b> <code>${existingUser.ticketId}</code>\n` +
+              `📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место\n` +
+              `👤 <b>Имя:</b> ${existingUser.name || 'Гость'}\n\n` +
+              `📱 <i>На входе достаточно показать ваш QR-код билет.</i>`;
           }
 
           if (await isSuperAdmin(from, chatId)) {
@@ -781,13 +781,13 @@ export default async function handler(req, res) {
             chat_id: chatId,
             parse_mode: 'HTML',
             text: `🎫 <b>Hush kelibsiz, ${volunteerName}! / Здравствуйте!</b>\n\n` +
-                  `✅ <b>Siz TEDxSergeli rasmiy chipta nazoratchisisiz (Контролёр).</b>\n` +
-                  `Вам открыт доступ к входному контролю билетов на мероприятии.\n\n` +
-                  `📌 <b>Как проверять билеты:</b>\n` +
-                  `1️⃣ Нажмите кнопку <b>📱 Входной QR-Сканер</b> внизу, чтобы открыть сканер прямо в Telegram.\n` +
-                  `2️⃣ Наведите камеру на QR-код участника.\n` +
-                  `3️⃣ Если QR-код не сканируется, используйте кнопку <b>🔍 Проверить по ID</b> или команду <code>/find ID</code>.\n\n` +
-                  `<i>Успешной работы на мероприятии!</i>`,
+              `✅ <b>Siz TEDxSergeli rasmiy chipta nazoratchisisiz (Контролёр).</b>\n` +
+              `Вам открыт доступ к входному контролю билетов на мероприятии.\n\n` +
+              `📌 <b>Как проверять билеты:</b>\n` +
+              `1️⃣ Нажмите кнопку <b>📱 Входной QR-Сканер</b> внизу, чтобы открыть сканер прямо в Telegram.\n` +
+              `2️⃣ Наведите камеру на QR-код участника.\n` +
+              `3️⃣ Если QR-код не сканируется, используйте кнопку <b>🔍 Проверить по ID</b> или команду <code>/find ID</code>.\n\n` +
+              `<i>Успешной работы на мероприятии!</i>`,
             reply_markup: SCANNER_KEYBOARD
           });
           return res.status(200).json({ ok: true });

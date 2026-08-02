@@ -1,22 +1,5 @@
 {
-  "cleanUrls": true,
   "rewrites": [
-    {
-      "source": "/scanner",
-      "destination": "/scanner/index.html"
-    },
-    {
-      "source": "/seat-picker",
-      "destination": "/seat-picker/index.html"
-    },
-    {
-      "source": "/app",
-      "destination": "/app/index.html"
-    },
-    {
-      "source": "/tickets",
-      "destination": "/tickets/index.html"
-    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
