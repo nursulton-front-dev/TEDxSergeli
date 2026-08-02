@@ -16,9 +16,15 @@ import { Scanner } from './components/Scanner';
 import { SeatPickerApp } from './components/SeatPickerApp';
 
 export default function App() {
-  const tgStartParam =
-    typeof window !== 'undefined' &&
-    ((window as any).Telegram?.WebApp?.initDataUnsafe?.start_param || '');
+  const tgWebApp = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null;
+
+  // Detect if running inside Telegram Mini App
+  const isInsideTelegram = Boolean(
+    (tgWebApp && (tgWebApp.initData || tgWebApp.version)) ||
+    (typeof window !== 'undefined' && window.location.search.includes('tgWebApp'))
+  );
+
+  const tgStartParam = tgWebApp?.initDataUnsafe?.start_param || '';
 
   const path = typeof window !== 'undefined' ? window.location.pathname : '';
   const search = typeof window !== 'undefined' ? window.location.search : '';
@@ -37,7 +43,8 @@ export default function App() {
     search.includes('app') ||
     tgStartParam.includes('seat') ||
     tgStartParam.includes('tickets') ||
-    tgStartParam.includes('picker');
+    tgStartParam.includes('picker') ||
+    (isInsideTelegram && !isScannerRoute);
 
   if (isScannerRoute) {
     return (
