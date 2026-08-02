@@ -13,19 +13,30 @@ export default function TicketPromo() {
         <AnimatedSection>
           <div className="relative mx-auto max-w-4xl">
             
+            <style>{`
+              .ticket-mask {
+                mask-image: radial-gradient(circle at 50% 0, transparent 24px, black 25px),
+                            radial-gradient(circle at 50% 100%, transparent 24px, black 25px);
+                mask-composite: intersect;
+                -webkit-mask-image: radial-gradient(circle at 50% 0, transparent 24px, black 25px),
+                                    radial-gradient(circle at 50% 100%, transparent 24px, black 25px);
+                -webkit-mask-composite: destination-in;
+              }
+              @media (min-width: 768px) {
+                .ticket-mask {
+                  mask-image: radial-gradient(circle at 0 50%, transparent 24px, black 25px),
+                              radial-gradient(circle at 100% 50%, transparent 24px, black 25px);
+                  mask-composite: intersect;
+                  -webkit-mask-image: radial-gradient(circle at 0 50%, transparent 24px, black 25px),
+                                      radial-gradient(circle at 100% 50%, transparent 24px, black 25px);
+                  -webkit-mask-composite: destination-in;
+                }
+              }
+            `}</style>
+
             {/* The Ticket Container */}
-            <div className="bg-[#0A0A0A] rounded-[24px] border border-white/10 shadow-2xl shadow-black/50 relative overflow-hidden flex flex-col md:flex-row text-white">
+            <div className="ticket-mask bg-[#0A0A0A] rounded-[24px] border border-white/10 shadow-2xl shadow-black/50 relative overflow-hidden flex flex-col md:flex-row text-white">
               
-              {/* Left Cutout */}
-              <div className="hidden md:block absolute top-1/2 -left-6 -translate-y-1/2 w-12 h-12 bg-ted-bg rounded-full border border-white/10 border-l-0 shadow-[inset_-3px_0_6px_rgba(0,0,0,0.2)]" />
-              
-              {/* Right Cutout */}
-              <div className="hidden md:block absolute top-1/2 -right-6 -translate-y-1/2 w-12 h-12 bg-ted-bg rounded-full border border-white/10 border-r-0 shadow-[inset_3px_0_6px_rgba(0,0,0,0.2)]" />
-
-              {/* Top/Bottom cutouts for mobile */}
-              <div className="md:hidden absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-ted-bg rounded-full border border-white/10 border-t-0 shadow-[inset_0_-3px_6px_rgba(0,0,0,0.2)]" />
-              <div className="md:hidden absolute -bottom-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-ted-bg rounded-full border border-white/10 border-b-0 shadow-[inset_0_3px_6px_rgba(0,0,0,0.2)]" />
-
               {/* Dashed line separator */}
               <div className="hidden md:block absolute top-10 bottom-10 left-[60%] w-px border-l-2 border-dashed border-white/15" />
               <div className="md:hidden absolute left-10 right-10 top-[55%] h-px border-t-2 border-dashed border-white/15" />
