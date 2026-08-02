@@ -35,27 +35,27 @@ export default function TicketPromo() {
             `}</style>
 
             {/* The Ticket Container */}
-            <div className="ticket-mask bg-[#0A0A0A] rounded-[24px] border border-white/10 shadow-2xl shadow-black/50 relative overflow-hidden flex flex-col md:flex-row text-white">
+            <div className="ticket-mask bg-zinc-50 dark:bg-zinc-900 rounded-[24px] border border-zinc-200 dark:border-white/10 shadow-xl shadow-zinc-200/50 dark:shadow-none relative overflow-hidden flex flex-col md:flex-row text-zinc-900 dark:text-white transition-colors duration-300">
               
               {/* Dashed line separator */}
-              <div className="hidden md:block absolute top-10 bottom-10 left-[60%] w-px border-l-2 border-dashed border-white/15" />
-              <div className="md:hidden absolute left-10 right-10 top-[55%] h-px border-t-2 border-dashed border-white/15" />
+              <div className="hidden md:block absolute top-10 bottom-10 left-[60%] w-px border-l-2 border-dashed border-zinc-200 dark:border-zinc-800 transition-colors duration-300" />
+              <div className="md:hidden absolute left-10 right-10 top-[55%] h-px border-t-2 border-dashed border-zinc-200 dark:border-zinc-800 transition-colors duration-300" />
 
               {/* Left Side: Info */}
               <div className="p-8 md:p-12 md:w-[60%] flex flex-col justify-center">
                 
                 {/* Badge */}
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-ted-red/10 text-[#E62B1E] border border-ted-red/20 text-xs md:text-sm font-bold tracking-wider mb-6 w-max shadow-[0_0_15px_rgba(230,43,30,0.15)]">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 text-xs md:text-sm font-bold tracking-wider mb-6 w-max transition-colors duration-300">
                   {t.badge[lang]}
                 </div>
                 
                 {/* Heading */}
-                <h2 className="text-3xl md:text-4xl lg:text-5xl font-black mb-4 leading-tight tracking-tight text-white">
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-black mb-4 leading-tight tracking-tight text-zinc-900 dark:text-white transition-colors duration-300">
                   {t.title[lang]}
                 </h2>
                 
                 {/* Subheading */}
-                <p className="text-gray-400 text-base md:text-lg leading-relaxed mb-8">
+                <p className="text-zinc-600 dark:text-zinc-400 text-base md:text-lg leading-relaxed mb-8 transition-colors duration-300">
                   {t.desc[lang]}
                 </p>
 
@@ -63,7 +63,7 @@ export default function TicketPromo() {
                 <ul className="space-y-4">
                   {t.features.map((feature, idx) => (
                     <li key={idx} className="flex items-center gap-3">
-                      <span className="text-gray-200 font-medium md:text-lg">
+                      <span className="text-zinc-700 dark:text-zinc-300 font-medium md:text-lg transition-colors duration-300">
                         {feature[lang]}
                       </span>
                     </li>
@@ -72,18 +72,18 @@ export default function TicketPromo() {
               </div>
 
               {/* Right Side: Price & Action */}
-              <div className="p-8 md:p-12 md:w-[40%] flex flex-col items-center justify-center bg-white/[0.02]">
+              <div className="p-8 md:p-12 md:w-[40%] flex flex-col items-center justify-center bg-black/[0.02] dark:bg-white/[0.02] transition-colors duration-300">
                 <div className="text-center mb-8 w-full">
-                  <p className="text-sm text-gray-500 uppercase tracking-widest mb-3 font-bold">
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-3 font-bold transition-colors duration-300">
                     {t.priceLabel[lang]}
                   </p>
                   
                   {/* Prices */}
                   <div className="flex flex-col items-center justify-center gap-1">
-                    <span className="text-lg text-gray-500 line-through font-medium decoration-[#E62B1E]/60 decoration-2">
+                    <span className="text-lg text-zinc-400 dark:text-zinc-500 line-through font-medium decoration-[#E62B1E]/60 decoration-2 transition-colors duration-300">
                       {t.oldPrice[lang]}
                     </span>
-                    <span className="text-4xl md:text-5xl font-black text-white tracking-tight">
+                    <span className="text-4xl md:text-5xl font-black text-zinc-900 dark:text-white tracking-tight transition-colors duration-300">
                       {t.price[lang]}
                     </span>
                   </div>

@@ -10,7 +10,14 @@ const kv = {
         headers: { Authorization: `Bearer ${KV_TOKEN}` }
       });
       const data = await res.json();
-      return data.result ? JSON.parse(data.result) : null;
+      if (!data.result) return null;
+      
+      let parsed = JSON.parse(data.result);
+      // Если данные случайно сохранились как двойная строка (из-за предыдущего бага), парсим еще раз
+      if (typeof parsed === 'string') {
+        try { parsed = JSON.parse(parsed); } catch(e) {}
+      }
+      return parsed;
     } catch (e) {
       console.error('KV GET Error:', e);
       return null;
@@ -22,7 +29,8 @@ const kv = {
       await fetch(`${KV_URL}/set/${key}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${KV_TOKEN}` },
-        body: JSON.stringify(typeof value === 'object' ? JSON.stringify(value) : value)
+        // Передаем просто JSON строку, без двойного оборачивания
+        body: typeof value === 'object' ? JSON.stringify(value) : String(value)
       });
     } catch (e) {
       console.error('KV SET Error:', e);
