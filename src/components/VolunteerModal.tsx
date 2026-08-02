@@ -16,9 +16,8 @@ export default function VolunteerModal({ isOpen, onClose }: Props) {
   const t = translations.cta.form;
 
   const [name, setName] = useState('');
-  const [age, setAge] = useState('');
-  const [school, setSchool] = useState('');
-  const [contact, setContact] = useState('');
+  const [phone, setPhone] = useState('');
+  const [message, setMessage] = useState('');
   const [status, setStatus] = useState<Status>('idle');
 
   useEffect(() => {
@@ -38,9 +37,8 @@ export default function VolunteerModal({ isOpen, onClose }: Props) {
     if (!isOpen) {
       const timeout = setTimeout(() => {
         setName('');
-        setAge('');
-        setSchool('');
-        setContact('');
+        setPhone('');
+        setMessage('');
         setStatus('idle');
       }, 300);
       return () => clearTimeout(timeout);
@@ -49,7 +47,7 @@ export default function VolunteerModal({ isOpen, onClose }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !age.trim() || !school.trim() || !contact.trim()) {
+    if (!name.trim() || !phone.trim()) {
       setStatus('error');
       return;
     }
@@ -59,7 +57,7 @@ export default function VolunteerModal({ isOpen, onClose }: Props) {
       const res = await fetch('/api/volunteer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), age: age.trim(), school: school.trim(), contact: contact.trim() }),
+        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), message: message.trim() }),
       });
       if (!res.ok) throw new Error('Request failed');
       setStatus('success');
@@ -130,50 +128,36 @@ export default function VolunteerModal({ isOpen, onClose }: Props) {
 
                   <div>
                     <label className="block text-sm font-medium text-ted-text mb-1.5">
-                      {t.ageLabel[lang]}
+                      {t.phoneLabel[lang]}
                     </label>
                     <input
-                      type="text"
-                      value={age}
-                      onChange={(e) => setAge(e.target.value)}
-                      placeholder={t.agePlaceholder[lang]}
-                      maxLength={10}
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder={t.phonePlaceholder[lang]}
+                      maxLength={30}
                       className="w-full px-4 py-2.5 bg-ted-bg-alt border border-ted-border rounded text-ted-text placeholder:text-ted-text-secondary/60 focus:outline-none focus:border-ted-red transition-colors"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-ted-text mb-1.5">
-                      {t.schoolLabel[lang]}
+                      {t.messageLabel[lang]}
                     </label>
-                    <input
-                      type="text"
-                      value={school}
-                      onChange={(e) => setSchool(e.target.value)}
-                      placeholder={t.schoolPlaceholder[lang]}
-                      maxLength={100}
-                      className="w-full px-4 py-2.5 bg-ted-bg-alt border border-ted-border rounded text-ted-text placeholder:text-ted-text-secondary/60 focus:outline-none focus:border-ted-red transition-colors"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-ted-text mb-1.5">
-                      {t.contactLabel[lang]}
-                    </label>
-                    <input
-                      type="text"
-                      value={contact}
-                      onChange={(e) => setContact(e.target.value)}
-                      placeholder={t.contactPlaceholder[lang]}
-                      maxLength={50}
-                      className="w-full px-4 py-2.5 bg-ted-bg-alt border border-ted-border rounded text-ted-text placeholder:text-ted-text-secondary/60 focus:outline-none focus:border-ted-red transition-colors"
+                    <textarea
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder={t.messagePlaceholder[lang]}
+                      maxLength={1000}
+                      rows={3}
+                      className="w-full px-4 py-2.5 bg-ted-bg-alt border border-ted-border rounded text-ted-text placeholder:text-ted-text-secondary/60 focus:outline-none focus:border-ted-red transition-colors resize-none"
                     />
                   </div>
                 </div>
 
                 {status === 'error' && (
                   <p className="mt-4 text-sm text-ted-red">
-                    {!name.trim() || !age.trim() || !school.trim() || !contact.trim() ? t.requiredError[lang] : t.errorMsg[lang]}
+                    {!name.trim() || !phone.trim() ? t.requiredError[lang] : t.errorMsg[lang]}
                   </p>
                 )}
 

@@ -13,6 +13,7 @@ dist-ssr
 *.local
 .env
 .vercel
+*.rar
 
 # Editor directories and files
 .vscode/*

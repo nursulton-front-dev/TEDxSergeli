@@ -54,7 +54,7 @@ export default function Navbar() {
               <img
                 src={logoSrc}
                 alt="TEDxSergeli"
-                className="h-11 md:h-14 w-auto"
+                className="h-12 md:h-16 w-auto"
               />
             </a>
 
@@ -157,7 +157,7 @@ export default function Navbar() {
               className="absolute right-0 top-0 bottom-0 w-[300px] bg-ted-bg border-l border-ted-border flex flex-col shadow-2xl"
             >
               <div className="flex items-center justify-between p-6">
-                <img src={logoSrc} alt="TEDxSergeli" className="h-9" />
+                <img src={logoSrc} alt="TEDxSergeli" className="h-10" />
                 <button
                   onClick={() => setMobileOpen(false)}
                   className="p-2 text-ted-text hover:text-ted-red transition-colors"
