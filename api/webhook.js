@@ -641,12 +641,24 @@ export default async function handler(req, res) {
 
         // Broadcast (Idea 2)
         if (text.startsWith('/broadcast')) {
+          const adminIdsEnv = process.env.ADMIN_IDS || SUPER_ADMIN_ID;
+          const adminIds = adminIdsEnv.split(',').map(id => id.trim());
+          if (!adminIds.includes(String(from.id))) {
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              text: "❌ У вас нет прав для рассылки."
+            });
+            return res.status(200).json({ ok: true });
+          }
+
           const broadcastMsg = text.replace('/broadcast', '').trim();
-          if (!broadcastMsg) {
+          const isReply = !!update.message.reply_to_message;
+
+          if (!broadcastMsg && !isReply) {
             await callTelegram('sendMessage', {
               chat_id: chatId,
               parse_mode: 'HTML',
-              text: `⚠️ <b>Foydalanish:</b> <code>/broadcast E'lon matni</code>`,
+              text: `⚠️ <b>Foydalanish:</b> <code>/broadcast E'lon matni</code>\nИли ответьте на сообщение (Reply) командой <code>/broadcast</code>`,
               reply_markup: ADMIN_KEYBOARD
             });
             return res.status(200).json({ ok: true });
@@ -654,29 +666,45 @@ export default async function handler(req, res) {
 
           const allUserIds = (await kv.get('all_user_ids')) || [];
           let successCount = 0;
+          let failCount = 0;
+
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            text: `⏳ Рассылка начата для ${allUserIds.length} пользователей. Пожалуйста, подождите...`
+          });
 
           for (const uid of allUserIds) {
             try {
-              const r = await callTelegram('sendMessage', {
-                chat_id: uid,
-                parse_mode: 'HTML',
-                text: `📢 <b>TEDxSergeli Rasmiy E'lon:</b>\n\n${broadcastMsg}`
-              });
-              if (r && r.ok) successCount++;
-            } catch (_bErr) { }
+              let r;
+              if (isReply) {
+                r = await callTelegram('copyMessage', {
+                  chat_id: uid,
+                  from_chat_id: chatId,
+                  message_id: update.message.reply_to_message.message_id
+                });
+              } else {
+                r = await callTelegram('sendMessage', {
+                  chat_id: uid,
+                  parse_mode: 'HTML',
+                  text: `📢 <b>TEDxSergeli Rasmiy E'lon:</b>\n\n${broadcastMsg}`
+                });
+              }
+              if (r && r.ok) {
+                successCount++;
+              } else {
+                failCount++;
+              }
+            } catch (_bErr) {
+              failCount++;
+            }
+            // Sleep for 40ms to avoid 429 Too Many Requests
+            await new Promise(resolve => setTimeout(resolve, 40));
           }
-
-          const currentTashkentTime = new Intl.DateTimeFormat('uz-UZ', {
-            timeZone: 'Asia/Tashkent',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-          }).format(new Date());
 
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `🚀 <b>E'lon tarqatildi!</b>\n\nMuvaffaqiyatli yetib bordi: <b>${successCount} / ${allUserIds.length}</b> foydalanuvchiga.\nVaqt: <b>${currentTashkentTime} (UTC+5)</b>`,
+            text: `✅ <b>Рассылка завершена!</b>\n• Успешно доставлено: ${successCount}\n• Заблокировали бота / Ошибки: ${failCount}`,
             reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
