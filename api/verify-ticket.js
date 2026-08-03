@@ -26,6 +26,26 @@ const kv = {
     } catch (e) {
       console.error('KV SET Error:', e);
     }
+  },
+  async setnx(key, value) {
+    if (!KV_URL) return false;
+    try {
+      const res = await fetch(`${KV_URL}/setnx/${key}/${value}`, {
+        headers: { Authorization: `Bearer ${KV_TOKEN}` }
+      });
+      const data = await res.json();
+      return data.result === 1;
+    } catch (e) {
+      return false;
+    }
+  },
+  async expire(key, seconds) {
+    if (!KV_URL) return;
+    try {
+      await fetch(`${KV_URL}/expire/${key}/${seconds}`, {
+        headers: { Authorization: `Bearer ${KV_TOKEN}` }
+      });
+    } catch (e) { }
   }
 };
 
@@ -84,6 +104,19 @@ export default async function handler(req, res) {
           message: 'Siz litsenziyalangan nazoratchi emassiz / Доступ ограничен!'
         });
       }
+    }
+
+    // Attempt to acquire a short-lived lock to prevent duplicate concurrent requests
+    const lockKey = `lock:verify:${cleanTicketId}`;
+    const acquired = await kv.setnx(lockKey, "1");
+    if (acquired) {
+      await kv.expire(lockKey, 3);
+    } else {
+      return res.status(429).json({
+        success: false,
+        reason: 'too_many_requests',
+        message: 'Kuting, chipta tekshirilmoqda...'
+      });
     }
 
 function getSeatDetails(seatNumber) {

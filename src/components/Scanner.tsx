@@ -22,6 +22,8 @@ export const Scanner: React.FC = () => {
 
   const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
   const scanTimeoutRef = useRef<any>(null);
+  const isProcessingRef = useRef<boolean>(false);
+  const lastScannedCodeRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Initialize Telegram WebApp
@@ -135,12 +137,40 @@ export const Scanner: React.FC = () => {
   };
 
   const onScanSuccess = (decodedText: string) => {
+    if (isProcessingRef.current) return;
+    if (decodedText === lastScannedCodeRef.current) return;
     if (scanResult.status === 'loading' || scanResult.status === 'success' || scanResult.status === 'error') return;
+
+    isProcessingRef.current = true;
+    lastScannedCodeRef.current = decodedText;
+
+    if (html5QrcodeRef.current && html5QrcodeRef.current.isScanning) {
+      try {
+        html5QrcodeRef.current.pause(true); // Stop receiving frames
+      } catch (e) {
+        console.error('Failed to pause camera', e);
+      }
+    }
+
     handleVerifyTicket(decodedText);
   };
 
   const onScanFailure = (_error: string) => {
     // Ignore minor frame scan misses
+  };
+
+  const resetScanner = () => {
+    setScanResult({ status: 'idle' });
+    isProcessingRef.current = false;
+    lastScannedCodeRef.current = null;
+    
+    if (html5QrcodeRef.current && html5QrcodeRef.current.isScanning) {
+      try {
+        html5QrcodeRef.current.resume(); // Resume camera
+      } catch (e) {
+        console.error('Failed to resume camera', e);
+      }
+    }
   };
 
   const handleManualSubmit = (e: React.FormEvent) => {
@@ -242,7 +272,7 @@ export const Scanner: React.FC = () => {
             </div>
           </div>
           <button
-            onClick={() => setScanResult({ status: 'idle' })}
+            onClick={resetScanner}
             className="mt-6 px-8 py-4 bg-white text-emerald-950 font-black text-base rounded-2xl shadow-2xl hover:bg-emerald-100 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
           >
             <span>Keyingi chiptani skanerlash ➔</span>
@@ -261,7 +291,7 @@ export const Scanner: React.FC = () => {
             <p>{scanResult.message}</p>
           </div>
           <button
-            onClick={() => setScanResult({ status: 'idle' })}
+            onClick={resetScanner}
             className="mt-6 px-8 py-4 bg-white text-red-950 font-black text-base rounded-2xl shadow-2xl hover:bg-red-100 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
           >
             <span>Qayta skanerlash 🔄</span>
