@@ -314,9 +314,9 @@ export const translations = {
       en: '🔥 75% tickets sold'
     },
     limitedSeats: {
-      uz: '⚡ Cheklangan 200 ta joy',
-      ru: '⚡ Ограничено 200 мест',
-      en: '⚡ Limited to 200 seats'
+      uz: '⚡ Cheklangan 100 ta joy',
+      ru: '⚡ Ограничено 100 мест',
+      en: '⚡ Limited to 100 seats'
     },
     features: [
       { uz: '📜 Rasmiy litsenziyalangan TEDx tadbiri', ru: '📜 Официальное лицензированное событие TEDx', en: '📜 Officially licensed TEDx event' },

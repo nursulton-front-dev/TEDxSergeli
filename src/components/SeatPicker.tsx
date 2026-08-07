@@ -6,7 +6,7 @@ export type Language = 'uz' | 'ru' | 'en';
 type LangMap = Record<Language, string>;
 
 export function getSeatDetails(seatNum: number) {
-  const n = Math.max(1, Math.min(200, seatNum || 1));
+  const n = Math.max(1, Math.min(100, seatNum || 1));
   let sector = 1;
   let sectorName: LangMap = { uz: "1-Sektor", ru: "Сектор 1", en: "Sector 1" };
   let seatInSector = n;
@@ -14,38 +14,38 @@ export function getSeatDetails(seatNum: number) {
   let seat = 1;
   let floor = 1;
 
-  if (n <= 48) {
+  if (n <= 24) {
     sector = 1;
     sectorName = { uz: "1-Sektor (Chap)", ru: "Сектор 1 (Левый)", en: "Sector 1 (Left)" };
     seatInSector = n;
     row = Math.floor((n - 1) / 8) + 1;
     seat = ((n - 1) % 8) + 1;
     floor = 1;
-  } else if (n <= 96) {
+  } else if (n <= 48) {
     sector = 2;
     sectorName = { uz: "2-Sektor (O'ng)", ru: "Сектор 2 (Правый)", en: "Sector 2 (Right)" };
+    seatInSector = n - 24;
+    row = Math.floor((seatInSector - 1) / 8) + 1;
+    seat = ((seatInSector - 1) % 8) + 1;
+    floor = 1;
+  } else if (n <= 72) {
+    sector = 3;
+    sectorName = { uz: "3-Sektor (Orqa Chap)", ru: "Сектор 3 (Задний Л.)", en: "Sector 3 (Rear L.)" };
     seatInSector = n - 48;
     row = Math.floor((seatInSector - 1) / 8) + 1;
     seat = ((seatInSector - 1) % 8) + 1;
     floor = 1;
-  } else if (n <= 144) {
-    sector = 3;
-    sectorName = { uz: "3-Sektor (Orqa Chap)", ru: "Сектор 3 (Задний Л.)", en: "Sector 3 (Rear L.)" };
-    seatInSector = n - 96;
-    row = Math.floor((seatInSector - 1) / 8) + 1;
-    seat = ((seatInSector - 1) % 8) + 1;
-    floor = 1;
-  } else if (n <= 192) {
+  } else if (n <= 96) {
     sector = 4;
     sectorName = { uz: "4-Sektor (Orqa O'ng)", ru: "Сектор 4 (Задний П.)", en: "Sector 4 (Rear R.)" };
-    seatInSector = n - 144;
+    seatInSector = n - 72;
     row = Math.floor((seatInSector - 1) / 8) + 1;
     seat = ((seatInSector - 1) % 8) + 1;
     floor = 1;
   } else {
     sector = 5;
     sectorName = { uz: "2-Qavat (Balkon)", ru: "2-Этаж (Балкон)", en: "2nd Floor (Balcony)" };
-    seatInSector = n - 192;
+    seatInSector = n - 96;
     row = 1;
     seat = seatInSector;
     floor = 2;
@@ -278,8 +278,8 @@ export const SeatPicker: React.FC<SeatPickerProps> = ({ lang, onSelectSeat, onCl
           <div className="flex flex-col gap-4 w-full max-w-4xl">
             {/* Front Row: Sector 1 (Left) & Sector 2 (Right) SIDE-BY-SIDE ALWAYS */}
             <div className="grid grid-cols-2 gap-2 sm:gap-4 w-full">
-              {renderSectorGrid(1, 6, 8, `Sektor 1`)}
-              {renderSectorGrid(49, 6, 8, `Sektor 2`)}
+              {renderSectorGrid(1, 3, 8, `Sektor 1`)}
+              {renderSectorGrid(25, 3, 8, `Sektor 2`)}
             </div>
 
             {/* Central Aisle */}
@@ -291,8 +291,8 @@ export const SeatPicker: React.FC<SeatPickerProps> = ({ lang, onSelectSeat, onCl
 
             {/* Back Row: Sector 3 (Left) & Sector 4 (Right) SIDE-BY-SIDE ALWAYS */}
             <div className="grid grid-cols-2 gap-2 sm:gap-4 w-full">
-              {renderSectorGrid(97, 6, 8, `Sektor 3`)}
-              {renderSectorGrid(145, 6, 8, `Sektor 4`)}
+              {renderSectorGrid(49, 3, 8, `Sektor 3`)}
+              {renderSectorGrid(73, 3, 8, `Sektor 4`)}
             </div>
           </div>
 
@@ -304,8 +304,8 @@ export const SeatPicker: React.FC<SeatPickerProps> = ({ lang, onSelectSeat, onCl
           </div>
 
           {/* 2nd Floor Balkon Sector */}
-          <div className="w-full max-w-sm mb-4">
-            {renderSectorGrid(193, 1, 8, `Balkon (193-200)`)}
+          <div className="w-full max-w-xs mb-4">
+            {renderSectorGrid(97, 1, 4, `Balkon (97-100)`)}
           </div>
         </div>
       </div>

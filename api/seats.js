@@ -59,7 +59,7 @@ export default async function handler(req, res) {
         ok: true,
         occupiedSeats: allOccupied,
         totalSold: parseInt(totalSold, 10) || allOccupied.length,
-        totalCapacity: 200
+        totalCapacity: 100
       });
     }
 
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       const { seatNumber, userId } = req.body || {};
       const num = parseInt(seatNumber, 10);
 
-      if (isNaN(num) || num < 1 || num > 200) {
+      if (isNaN(num) || num < 1 || num > 100) {
         return res.status(400).json({ ok: false, error: 'Invalid seat number' });
       }
 

@@ -179,9 +179,9 @@ async function generateTicketQrImage(qrUrl) {
   });
 }
 
-// Seat Allocation helper for 200 total seats
+// Seat Allocation helper for 100 total seats
 function getSeatDetails(seatNum) {
-  const n = Math.max(1, Math.min(200, parseInt(seatNum, 10) || 1));
+  const n = Math.max(1, Math.min(100, parseInt(seatNum, 10) || 1));
   let sector = 1;
   let sectorName = "Sektor 1";
   let seatInSector = n;
@@ -189,38 +189,38 @@ function getSeatDetails(seatNum) {
   let seat = 1;
   let floor = 1;
 
-  if (n <= 48) {
+  if (n <= 24) {
     sector = 1;
     sectorName = "Sektor 1";
     seatInSector = n;
     row = Math.floor((n - 1) / 8) + 1;
     seat = ((n - 1) % 8) + 1;
     floor = 1;
-  } else if (n <= 96) {
+  } else if (n <= 48) {
     sector = 2;
     sectorName = "Sektor 2";
+    seatInSector = n - 24;
+    row = Math.floor((seatInSector - 1) / 8) + 1;
+    seat = ((seatInSector - 1) % 8) + 1;
+    floor = 1;
+  } else if (n <= 72) {
+    sector = 3;
+    sectorName = "Sektor 3";
     seatInSector = n - 48;
     row = Math.floor((seatInSector - 1) / 8) + 1;
     seat = ((seatInSector - 1) % 8) + 1;
     floor = 1;
-  } else if (n <= 144) {
-    sector = 3;
-    sectorName = "Sektor 3";
-    seatInSector = n - 96;
-    row = Math.floor((seatInSector - 1) / 8) + 1;
-    seat = ((seatInSector - 1) % 8) + 1;
-    floor = 1;
-  } else if (n <= 192) {
+  } else if (n <= 96) {
     sector = 4;
     sectorName = "Sektor 4";
-    seatInSector = n - 144;
+    seatInSector = n - 72;
     row = Math.floor((seatInSector - 1) / 8) + 1;
     seat = ((seatInSector - 1) % 8) + 1;
     floor = 1;
   } else {
     sector = 5;
     sectorName = "2-Etaj (Balkon)";
-    seatInSector = n - 192;
+    seatInSector = n - 96;
     row = 1;
     seat = seatInSector;
     floor = 2;
@@ -326,7 +326,7 @@ export default async function handler(req, res) {
             await callTelegram('sendMessage', {
               chat_id: chatId,
               parse_mode: 'HTML',
-              text: `✅ <b>BAZA TO'LIQ TOZALANDI! / БАЗА ОЧИЩЕНА!</b>\nBarcha chiptalar, band qilingan joylar va foydalanuvchilar nollashtirildi (0/200).`,
+              text: `✅ <b>BAZA TO'LIQ TOZALANDI! / БАЗА ОЧИЩЕНА!</b>\nBarcha chiptalar, band qilingan joylar va foydalanuvchilar nollashtirildi (0/100).`,
               reply_markup: ADMIN_KEYBOARD
             });
             return res.status(200).json({ ok: true });
@@ -336,7 +336,7 @@ export default async function handler(req, res) {
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `⚠️ <b>DIQQAT! Baza ma'lumotlarini nolga tushirmoqchimisiz?</b>\n\nUshbu amal barcha sotilgan chiptalarni, band qilingan joylarni va foydalanuvchi ma'lumotlarini butunlay o'chirib tashlaydi (0/200).`,
+            text: `⚠️ <b>DIQQAT! Baza ma'lumotlarini nolga tushirmoqchimisiz?</b>\n\nUshbu amal barcha sotilgan chiptalarni, band qilingan joylarni va foydalanuvchi ma'lumotlarini butunlay o'chirib tashlaydi (0/100).`,
             reply_markup: {
               inline_keyboard: [
                 [
@@ -547,7 +547,7 @@ export default async function handler(req, res) {
             parse_mode: 'HTML',
             text: `📊 <b>TEDxSergeli LIVE MONITORING & STATISTIKA:</b>\n\n` +
               `👥 <b>Botdagi foydalanuvchilar:</b> ${allUserIds.length} ta\n` +
-              `🎟 <b>Sotilgan chiptalar:</b> ${displaySold} / 200\n` +
+              `🎟 <b>Sotilgan chiptalar:</b> ${displaySold} / 100\n` +
               `⏳ <b>Vaqtincha band qilingan joylar:</b> ${occupiedSeats.length}\n\n` +
               `🟢 <b>Tadbirga kirganlar (Checked In):</b> <b>${scannedCount} ta (${entryPercent}%)</b>\n` +
               `⏳ <b>Kirishi kutilayotganlar:</b> <b>${displaySold - scannedCount} ta</b>\n\n` +
@@ -1098,10 +1098,10 @@ export default async function handler(req, res) {
 
           let nextSeatNumber = totalSold + 1;
           const allTaken = new Set([...occupiedSeats, ...allocatedSeats]);
-          while (allTaken.has(nextSeatNumber) && nextSeatNumber <= 200) {
+          while (allTaken.has(nextSeatNumber) && nextSeatNumber <= 100) {
             nextSeatNumber++;
           }
-          if (nextSeatNumber > 200) nextSeatNumber = 200;
+          if (nextSeatNumber > 100) nextSeatNumber = 100;
 
           if (!occupiedSeats.includes(nextSeatNumber)) {
             occupiedSeats.push(nextSeatNumber);
@@ -1266,7 +1266,7 @@ export default async function handler(req, res) {
           chat_id: message.chat.id,
           message_id: message.message_id,
           parse_mode: 'HTML',
-          text: `✅ <b>BAZA TO'LIQ TOZALANDI! / БАЗА ОЧИЩЕНА!</b>\nBarcha chiptalar, band qilingan joylar va foydalanuvchilar nollashtirildi (0/200).`
+          text: `✅ <b>BAZA TO'LIQ TOZALANDI! / БАЗА ОЧИЩЕНА!</b>\nBarcha chiptalar, band qilingan joylar va foydalanuvchilar nollashtirildi (0/100).`
         });
         await callTelegram('answerCallbackQuery', { callback_query_id: id });
         return res.status(200).json({ ok: true });
@@ -1306,9 +1306,9 @@ export default async function handler(req, res) {
 
           let seatNumber = user.seatNumber || (user.seatId ? parseInt(String(user.seatId).replace(/\D/g, ''), 10) : null);
 
-          if (!seatNumber || seatNumber < 1 || seatNumber > 200) {
+          if (!seatNumber || seatNumber < 1 || seatNumber > 100) {
             seatNumber = allocatedSeats.length + 1;
-            if (seatNumber > 200) seatNumber = 200;
+            if (seatNumber > 100) seatNumber = 100;
           }
 
           if (!allocatedSeats.includes(seatNumber)) {

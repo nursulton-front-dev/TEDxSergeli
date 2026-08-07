@@ -51,27 +51,27 @@ async function callTelegram(method, body) {
 }
 
 function getSeatDetails(seatNum) {
-  const n = Math.max(1, Math.min(200, seatNum || 1));
+  const n = Math.max(1, Math.min(100, seatNum || 1));
   let sector = 1;
   let sectorName = "Sektor 1";
   let seatInSector = n;
   let row = 1;
   let seat = 1;
 
-  if (n <= 48) {
+  if (n <= 24) {
     sector = 1; sectorName = "Sektor 1"; seatInSector = n;
     row = Math.floor((n - 1) / 8) + 1; seat = ((n - 1) % 8) + 1;
+  } else if (n <= 48) {
+    sector = 2; sectorName = "Sektor 2"; seatInSector = n - 24;
+    row = Math.floor((seatInSector - 1) / 8) + 1; seat = ((seatInSector - 1) % 8) + 1;
+  } else if (n <= 72) {
+    sector = 3; sectorName = "Sektor 3"; seatInSector = n - 48;
+    row = Math.floor((seatInSector - 1) / 8) + 1; seat = ((seatInSector - 1) % 8) + 1;
   } else if (n <= 96) {
-    sector = 2; sectorName = "Sektor 2"; seatInSector = n - 48;
-    row = Math.floor((seatInSector - 1) / 8) + 1; seat = ((seatInSector - 1) % 8) + 1;
-  } else if (n <= 144) {
-    sector = 3; sectorName = "Sektor 3"; seatInSector = n - 96;
-    row = Math.floor((seatInSector - 1) / 8) + 1; seat = ((seatInSector - 1) % 8) + 1;
-  } else if (n <= 192) {
-    sector = 4; sectorName = "Sektor 4"; seatInSector = n - 144;
+    sector = 4; sectorName = "Sektor 4"; seatInSector = n - 72;
     row = Math.floor((seatInSector - 1) / 8) + 1; seat = ((seatInSector - 1) % 8) + 1;
   } else {
-    sector = 5; sectorName = "2-Etaj (Balkon)"; seatInSector = n - 192;
+    sector = 5; sectorName = "2-Etaj (Balkon)"; seatInSector = n - 96;
     row = 1; seat = seatInSector;
   }
 
