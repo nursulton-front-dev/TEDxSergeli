@@ -97,13 +97,45 @@ export const translations = {
     titleStart: { uz: 'Bizning', ru: 'Наши', en: 'Meet our' },
     titleAccent: { uz: 'spikerlarimiz', ru: 'спикеры', en: 'speakers' },
     subtitle: {
-      uz: 'Ilhomlovchi spikerlar tez orada e\'lon qilinadi. Kuzatib boring!',
-      ru: 'Вдохновляющие спикеры будут объявлены в ближайшее время. Следите за обновлениями!',
-      en: 'Inspiring speakers will be announced soon. Stay tuned!',
+      uz: "TEDxSergeli sahnasidagi ilhomlantiruvchi spikerlar va ularning g'oyalari.",
+      ru: 'Вдохновляющие спикеры на сцене TEDxSergeli и их уникальные идеи.',
+      en: 'Inspiring speakers on the TEDxSergeli stage sharing ideas worth spreading.',
     },
+    readBio: { uz: 'Batafsil ma\'lumot', ru: 'Подробнее', en: 'Read Bio' },
+    closeModal: { uz: 'Yopish', ru: 'Закрыть', en: 'Close' },
+    list: [
+      {
+        id: 'abdulla-azizov',
+        name: { uz: 'Abdulla Azizov', ru: 'Абдулла Азизов', en: 'Abdulla Azizov' },
+        title: {
+          uz: "Farmatsevtika tarmog'ini rivojlantirish agentligi rahbari",
+          ru: 'Руководитель Агентства по развитию фармацевтической отрасли',
+          en: 'Head of Medical & Pharmaceutical Industry Development Agency',
+        },
+        bio: {
+          uz: "2004-yilda Toshkent jahon iqtisodiyoti va diplomatiya universitetining Xalqaro iqtisodiy munosabatlar yo'nalishini tamomlagan. 2003-yilda Nagoya universitetida (Yaponiya) iqtisodiyot sohasida tahsil olgan. 2006-yilda Oarhus universitetida (Daniya) Moliya magistri darajasini olgan va Oarhus texnik kollejini IT-dasturlash mutaxassisligi bo'yicha tamomlagan. 2006–2019-yillarda Daniyadagi APM-Maersk A/S, Orsted A/S, Carlsberg A/S, Implement consulting group, Vestas A/S va Danfoss kabi kompaniyalarda moliya va biznes-jarayonlarni raqamlashtirish hamda avtomatlashtirish sohasida mehnat qilgan. 2019–2020-yillarda O'zbekiston Respublikasi Davlat soliq qo'mitasi raisi o'rinbosari, 2020–2022-yillarda Sog'liqni saqlash vaziri o'rinbosari, 2022-yildan 'Olmaliq KMK' AJ Boshqaruv raisining raqamlashtirish bo'yicha o'rinbosari lavozimlarida faoliyat yuritgan.",
+          ru: "В 2004 году окончил Университет мировой экономики и дипломатии в Ташкенте по специальности «Международные экономические отношения». В 2003 году изучал экономику в Университете Нагоя (Япония). В 2006 году получил степень магистра финансов в Орхусском университете (Дания) и окончил Технический колледж Орхуса по специальности «IT-программирование». В 2006–2019 годах работал в сфере цифровизации и автоматизации финансовых и бизнес-процессов в датских компаниях, таких как APM-Maersk A/S, Orsted A/S, Carlsberg A/S, Implement consulting group, Vestas A/S и Danfoss. В 2019 году — советник и зампредседателя Государственного налогового комитета РУз. С июля 2020 года — заместитель министра здравоохранения. С января 2022 года — заместитель председателя правления АО «Алмалыкский ГМК» по цифровизации.",
+          en: "In 2004 he graduated from the University of World Economy and Diplomacy in Tashkent with Bachelor's degree in International Economic Relations. In 2003, he studied economics at Nagoya University (Japan). In 2006, he received a master's degree in Finance from the University of Aarhus (Denmark) and graduated from the Technical College of Aarhus with a professional degree in IT-programming. In 2006-2019, he worked in the field of digitalisation and automation of financial and business processes in Danish companies such as APM-Maersk A/S, Orsted A/S, Carlsberg A/S, Implement consulting group, Vestas A/S and Danfoss. In May-August 2019, Mr. Azizov worked at the State Tax Committee as an advisor to the Chairman. In September 2019, he was appointed Deputy Chairman of the State Tax Committee of the Republic of Uzbekistan. In July 2020, he became Deputy Minister of Health. Since January 2022, he has been the Deputy Chairman of the Board of Almalyk MMC JSC and responsible for digitalization.",
+        },
+        image: '/speakers/abdulla-azizov.jpg',
+      },
+      {
+        id: 'odilbek-mirzayev',
+        name: { uz: 'Odilbek Mirzayev', ru: 'Одилбек Мирзаев', en: 'Odilbek Mirzayev' },
+        title: {
+          uz: 'PDP Ecosystem va PDP Academy asoschisi hamda CEO',
+          ru: 'Основатель и CEO PDP Ecosystem',
+          en: 'Founder and CEO of PDP Ecosystem',
+        },
+        bio: {
+          uz: "Odilbek Mirzayev — Toshkentda joylashgan PDP Academy va PDP Ecosystem asoschisi. O'zbekiston Respublikasi Bosh prokuraturasi, Davlat soliq qo'mitasi, Iqtisodiy taraqqiyot va kambag'allikni qisqartirish vazirligi hamda O'zbekiston respublika tovar-xom ashyo birjasida boy tajribaga ega. Toshkent axborot texnologiyalari universiteti bakalavriat bitiruvchisi (2008-2012).",
+          ru: "Одилбек Мирзаев — основатель PDP Academy и PDP Ecosystem в Ташкенте. Имеет богатый опыт работы в Генеральной прокуратуре Республики Узбекистан, Государственном налоговом комитете, Министерстве экономического развития и сокращения бедности, а также на Узбекской республиканской товарно-сырьевой бирже. Выпускник Ташкентского университета информационных технологий (2008-2012).",
+          en: "Odilbek Mirzayev, based in Tashkent, UZ, is currently a Founder at PDP Academy. Odilbek Mirzayev brings experience from previous roles at General Prosecutor's Office of Republic of Uzbekistan, State Tax Committee of the Republic of Uzbekistan, Ministry of Economic Development and Poverty Reduction of the Republic of Uzbekistan and Uzbek commodity exchange. Odilbek Mirzayev holds a 2008 - 2012 Bachelors @ Tashkent University of Information Technologies.",
+        },
+        image: '/speakers/odilbek-mirzayev.jpg',
+      },
+    ],
     teasers: [
-      { uz: "Maxfiy mehmon", ru: "Секретный гость", en: "Secret Guest" },
-      { uz: "Tech-tadbirkor", ru: "Tech-предприниматель", en: "Tech Entrepreneur" },
       { uz: "AI bo'yicha ekspert", ru: "Известный эксперт по ИИ", en: "Renowned AI Expert" },
       { uz: "Top-menejer", ru: "Топ-менеджер", en: "Top Manager" },
       { uz: "Kreator", ru: "Известный креатор", en: "Famous Creator" },
