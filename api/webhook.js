@@ -123,6 +123,31 @@ async function trackTicket(ticketId) {
   }
 }
 
+// Seat Reservation Helper
+async function getActiveOccupiedSeats() {
+  let occupied = (await kv.get('occupied_seats')) || [];
+  if (!Array.isArray(occupied)) occupied = [];
+  const now = Date.now();
+  let changed = false;
+  const active = [];
+  for (let item of occupied) {
+    if (typeof item === 'object' && item.seat && item.expiresAt) {
+      if (item.expiresAt > now) {
+        active.push(item);
+      } else {
+        changed = true;
+      }
+    } else {
+      // old format (just numbers) -> remove them
+      changed = true;
+    }
+  }
+  if (changed) {
+    await kv.set('occupied_seats', active);
+  }
+  return active;
+}
+
 // Telegram API Helper
 async function callTelegram(method, body) {
   try {
@@ -516,7 +541,7 @@ export default async function handler(req, res) {
           const allocatedSeats = (await kv.get('allocated_seats')) || [];
           const allTicketIds = (await kv.get('all_ticket_ids')) || [];
           const allUserIds = (await kv.get('all_user_ids')) || [];
-          const occupiedSeats = (await kv.get('occupied_seats')) || [];
+          const occupiedSeats = await getActiveOccupiedSeats();
 
           const displaySold = Math.max(
             totalSold,
@@ -988,12 +1013,10 @@ export default async function handler(req, res) {
           const { seatNumber, sector, row, seat, bookingExpiresAt } = parsed || {};
 
           if (seatNumber) {
-            let occupied = (await kv.get('occupied_seats')) || [];
-            if (!Array.isArray(occupied)) occupied = [];
-            if (!occupied.includes(seatNumber)) {
-              occupied.push(seatNumber);
-              await kv.set('occupied_seats', occupied, 900);
-            }
+            let activeOccupied = await getActiveOccupiedSeats();
+            activeOccupied = activeOccupied.filter(i => i.seat !== seatNumber);
+            activeOccupied.push({ seat: seatNumber, expiresAt: Date.now() + 15 * 60 * 1000 });
+            await kv.set('occupied_seats', activeOccupied);
 
             user.seatNumber = seatNumber;
             user.seatId = `SEAT-${seatNumber}`;
@@ -1089,24 +1112,24 @@ export default async function handler(req, res) {
         }
 
         if (user.phone) {
-          let totalSold = parseInt((await kv.get('total_tickets_sold')) || 0, 10);
-          let occupiedSeats = (await kv.get('occupied_seats')) || [];
           let allocatedSeats = (await kv.get('allocated_seats')) || [];
+          let activeOccupied = await getActiveOccupiedSeats();
 
-          if (!Array.isArray(occupiedSeats)) occupiedSeats = [];
           if (!Array.isArray(allocatedSeats)) allocatedSeats = [];
 
-          let nextSeatNumber = totalSold + 1;
-          const allTaken = new Set([...occupiedSeats, ...allocatedSeats]);
+          const occupiedSeatNumbers = activeOccupied.map(i => i.seat);
+          const allTaken = new Set([...occupiedSeatNumbers, ...allocatedSeats]);
+          
+          // Start from seat 1 and find the first available to fill gaps
+          let nextSeatNumber = 1;
           while (allTaken.has(nextSeatNumber) && nextSeatNumber <= 100) {
             nextSeatNumber++;
           }
           if (nextSeatNumber > 100) nextSeatNumber = 100;
 
-          if (!occupiedSeats.includes(nextSeatNumber)) {
-            occupiedSeats.push(nextSeatNumber);
-            await kv.set('occupied_seats', occupiedSeats, 900);
-          }
+          activeOccupied = activeOccupied.filter(i => i.seat !== nextSeatNumber);
+          activeOccupied.push({ seat: nextSeatNumber, expiresAt: Date.now() + 15 * 60 * 1000 });
+          await kv.set('occupied_seats', activeOccupied);
 
           user.seatNumber = nextSeatNumber;
           user.seatId = `SEAT-${nextSeatNumber}`;
@@ -1319,10 +1342,11 @@ export default async function handler(req, res) {
           const totalSold = allocatedSeats.length;
           await kv.set('total_tickets_sold', totalSold);
 
-          let occupiedSeats = (await kv.get('occupied_seats')) || [];
-          if (Array.isArray(occupiedSeats)) {
-            occupiedSeats = occupiedSeats.filter((s) => s !== seatNumber);
-            await kv.set('occupied_seats', occupiedSeats);
+          let activeOccupied = await getActiveOccupiedSeats();
+          const initialLen = activeOccupied.length;
+          activeOccupied = activeOccupied.filter(i => i.seat !== seatNumber);
+          if (activeOccupied.length !== initialLen) {
+            await kv.set('occupied_seats', activeOccupied);
           }
 
           const seatInfo = getSeatDetails(seatNumber);
