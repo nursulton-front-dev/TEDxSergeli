@@ -1400,7 +1400,7 @@ export default async function handler(req, res) {
               `📍 <b>Manzil:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Ixtisoslashtirilgan Maktabi (Google Maps)</a>\n\n` +
               `📌 <b>Kirish qoidalari (TEDx Rules):</b>\n` +
               `• 1️⃣ Tadbir kunida ushbu QR-kodni nazoratchiga ko'rsating.\n` +
-              `• 2️⃣ Eshiklar soat 13:30 da yopiladi. Kechikmang!\n` +
+              `• 2️⃣ Eshiklar soat 14:30 da yopiladi. Kechikmang!\n` +
               `• 3️⃣ Har bir QR-kod faqat 1 marotaba kirish uchun amal qiladi.\n\n` +
               `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
           } else if (userLang === 'en') {
@@ -1415,7 +1415,7 @@ export default async function handler(req, res) {
               `📍 <b>Location:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Specialized School (Google Maps)</a>\n\n` +
               `📌 <b>Entrance Rules (TEDx Rules):</b>\n` +
               `• 1️⃣ Show this QR code to the scanner on the day of the event.\n` +
-              `• 2️⃣ Doors close at 13:30. Please arrive on time!\n` +
+              `• 2️⃣ Doors close at 14:30. Please arrive on time!\n` +
               `• 3️⃣ Each QR code is valid for 1 entry only.\n\n` +
               `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
           } else {
@@ -1430,7 +1430,7 @@ export default async function handler(req, res) {
               `📍 <b>Адрес:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Специализированная школа Сергели (Google Maps)</a>\n\n` +
               `📌 <b>Правила входа (Правила TEDx):</b>\n` +
               `• 1️⃣ Покажите этот QR-код контролеру на входе в день мероприятия.\n` +
-              `• 2️⃣ Двери закрываются в 13:30. Пожалуйста, не опаздывайте!\n` +
+              `• 2️⃣ Двери закрываются в 14:30. Пожалуйста, не опаздывайте!\n` +
               `• 3️⃣ Каждый QR-код действителен только для 1 входа.\n\n` +
               `ℹ️ <i>TEDxSergeli — независимое мероприятие, проводимое по лицензии TED.</i>`;
           }
