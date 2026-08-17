@@ -49,6 +49,39 @@ const kv = {
   }
 };
 
+// Seat Allocation helper for 100 total seats — must match webhook.js's layout
+// (4 sectors of 24 seats / 8 per row, plus a 4-seat balcony sector) so scanners
+// always show the guest's real seat/row/sector.
+function getSeatDetails(seatNum) {
+  const n = Math.max(1, Math.min(100, parseInt(seatNum, 10) || 1));
+  let sector = 1;
+  let sectorName = "Sektor 1";
+  let row = 1;
+  let seat = 1;
+
+  if (n <= 24) {
+    sector = 1; sectorName = "Sektor 1";
+    row = Math.floor((n - 1) / 8) + 1; seat = ((n - 1) % 8) + 1;
+  } else if (n <= 48) {
+    sector = 2; sectorName = "Sektor 2";
+    const seatInSector = n - 24;
+    row = Math.floor((seatInSector - 1) / 8) + 1; seat = ((seatInSector - 1) % 8) + 1;
+  } else if (n <= 72) {
+    sector = 3; sectorName = "Sektor 3";
+    const seatInSector = n - 48;
+    row = Math.floor((seatInSector - 1) / 8) + 1; seat = ((seatInSector - 1) % 8) + 1;
+  } else if (n <= 96) {
+    sector = 4; sectorName = "Sektor 4";
+    const seatInSector = n - 72;
+    row = Math.floor((seatInSector - 1) / 8) + 1; seat = ((seatInSector - 1) % 8) + 1;
+  } else {
+    sector = 5; sectorName = "2-Etaj (Balkon)";
+    row = 1; seat = n - 96;
+  }
+
+  return { seatNumber: n, sector, sectorName, row, seat, seatId: `SEAT-${n}` };
+}
+
 export default async function handler(req, res) {
   // CORS Headers
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -83,27 +116,34 @@ export default async function handler(req, res) {
       cleanTicketId = `TEDX-${cleanTicketId}`;
     }
 
-    // Check volunteer authorization if volunteerId is supplied
-    if (volunteerId) {
-      const superAdminId = '6804139305';
-      const adminChatId = String(process.env.ADMIN_CHAT_ID || '');
-      const scanners = (await kv.get('allowed_scanners')) || [];
-      const superAdmins = (await kv.get('super_admins')) || [];
-      const volIdStr = String(volunteerId);
+    // Volunteer authorization is mandatory — this endpoint is public (CORS *),
+    // so without this check anyone could check in or invalidate any ticket.
+    if (!volunteerId) {
+      return res.status(401).json({
+        success: false,
+        reason: 'unauthorized',
+        message: 'Nazoratchi aniqlanmadi / Volunteer ID required!'
+      });
+    }
 
-      const isAuthorized =
-        volIdStr === superAdminId ||
-        volIdStr === adminChatId ||
-        (Array.isArray(scanners) && scanners.some(s => String(s).toLowerCase() === volIdStr.toLowerCase())) ||
-        (Array.isArray(superAdmins) && superAdmins.some(a => String(a).toLowerCase() === volIdStr.toLowerCase()));
+    const superAdminId = '6804139305';
+    const adminChatId = String(process.env.ADMIN_CHAT_ID || '');
+    const scanners = (await kv.get('allowed_scanners')) || [];
+    const superAdmins = (await kv.get('super_admins')) || [];
+    const volIdStr = String(volunteerId);
 
-      if (!isAuthorized) {
-        return res.status(403).json({
-          success: false,
-          reason: 'unauthorized',
-          message: 'Siz litsenziyalangan nazoratchi emassiz / Доступ ограничен!'
-        });
-      }
+    const isAuthorizedScanner =
+      volIdStr === superAdminId ||
+      volIdStr === adminChatId ||
+      (Array.isArray(scanners) && scanners.some(s => String(s).toLowerCase() === volIdStr.toLowerCase())) ||
+      (Array.isArray(superAdmins) && superAdmins.some(a => String(a).toLowerCase() === volIdStr.toLowerCase()));
+
+    if (!isAuthorizedScanner) {
+      return res.status(403).json({
+        success: false,
+        reason: 'unauthorized',
+        message: 'Siz litsenziyalangan nazoratchi emassiz / Доступ ограничен!'
+      });
     }
 
     // Attempt to acquire a short-lived lock to prevent duplicate concurrent requests
@@ -118,15 +158,6 @@ export default async function handler(req, res) {
         message: 'Kuting, chipta tekshirilmoqda...'
       });
     }
-
-function getSeatDetails(seatNumber) {
-  const num = parseInt(seatNumber, 10) || 1;
-  const row = Math.ceil(num / 10);
-  const seatInRow = ((num - 1) % 10) + 1;
-  let sectorName = "Sektor 1";
-  if (row > 10) sectorName = "Sektor 2";
-  return { row, seat: seatInRow, sectorName };
-}
 
     let ticket = await kv.get(`ticket:${cleanTicketId}`);
 
