@@ -30,6 +30,30 @@ const kv = {
   }
 };
 
+// Filters out expired/legacy-format holds and persists the cleanup, mirroring webhook.js
+async function getActiveOccupiedSeats() {
+  let occupied = (await kv.get('occupied_seats')) || [];
+  if (!Array.isArray(occupied)) occupied = [];
+  const now = Date.now();
+  let changed = false;
+  const active = [];
+  for (const item of occupied) {
+    if (item && typeof item === 'object' && item.seat && item.expiresAt) {
+      if (item.expiresAt > now) {
+        active.push(item);
+      } else {
+        changed = true;
+      }
+    } else {
+      changed = true;
+    }
+  }
+  if (changed) {
+    await kv.set('occupied_seats', active);
+  }
+  return active;
+}
+
 export default async function handler(req, res) {
   // CORS Headers
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -47,12 +71,15 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const allocatedSeats = (await kv.get('allocated_seats')) || [];
-      const occupiedSeats = (await kv.get('occupied_seats')) || [];
+      const activeOccupied = await getActiveOccupiedSeats();
       const totalSold = (await kv.get('total_tickets_sold')) || 0;
 
-      // Merge allocated and occupied seats into a unique list of taken seat numbers
+      // Merge allocated and actively-held seats into a unique list of taken seat numbers
       const allOccupied = Array.from(
-        new Set([...(Array.isArray(allocatedSeats) ? allocatedSeats : []), ...(Array.isArray(occupiedSeats) ? occupiedSeats : [])])
+        new Set([
+          ...(Array.isArray(allocatedSeats) ? allocatedSeats : []),
+          ...activeOccupied.map((i) => i.seat)
+        ])
       );
 
       return res.status(200).json({
@@ -64,7 +91,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { seatNumber, userId } = req.body || {};
+      const { seatNumber } = req.body || {};
       const num = parseInt(seatNumber, 10);
 
       if (isNaN(num) || num < 1 || num > 100) {
@@ -72,24 +99,21 @@ export default async function handler(req, res) {
       }
 
       const allocatedSeats = (await kv.get('allocated_seats')) || [];
-      const occupiedSeats = (await kv.get('occupied_seats')) || [];
+      let activeOccupied = await getActiveOccupiedSeats();
 
-      if (allocatedSeats.includes(num) || occupiedSeats.includes(num)) {
+      if ((Array.isArray(allocatedSeats) && allocatedSeats.includes(num)) || activeOccupied.some((i) => i.seat === num)) {
         return res.status(409).json({ ok: false, error: 'Seat already occupied' });
       }
 
-      // Temporarily hold seat for 10 minutes (600s)
-      let currentOccupied = Array.isArray(occupiedSeats) ? occupiedSeats : [];
-      if (!currentOccupied.includes(num)) {
-        currentOccupied.push(num);
-        await kv.set('occupied_seats', currentOccupied, 600);
-      }
+      // Temporarily hold seat for 15 minutes, matching the webhook's booking window
+      activeOccupied.push({ seat: num, expiresAt: Date.now() + 15 * 60 * 1000 });
+      await kv.set('occupied_seats', activeOccupied);
 
       return res.status(200).json({
         ok: true,
         seatNumber: num,
         seatId: `SEAT-${num}`,
-        expiresInSeconds: 600
+        expiresInSeconds: 900
       });
     }
 
