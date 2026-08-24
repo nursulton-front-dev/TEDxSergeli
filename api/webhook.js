@@ -50,9 +50,9 @@ const PUBLIC_DOMAIN = process.env.PUBLIC_URL || 'https://tedx-sergeli.vercel.app
 
 const ADMIN_KEYBOARD = {
   keyboard: [
-    [{ text: "📊 Статистика" }, { text: "📋 Контролеры" }],
-    [{ text: "👑 Админы" }, { text: "ℹ️ Инструкция" }],
-    [{ text: "❌ Скрыть меню" }]
+    [{ text: "📊 Статистика" }, { text: "🏷 Промокоды" }],
+    [{ text: "📋 Контролеры" }, { text: "👑 Админы" }],
+    [{ text: "ℹ️ Инструкция" }, { text: "❌ Скрыть меню" }]
   ],
   resize_keyboard: true,
   persistent: true
@@ -103,6 +103,192 @@ async function isAuthorizedScanner(from, chatId) {
     const sStr = String(s).toLowerCase().replace('@', '');
     return sStr === userIdStr || (username && sStr === username);
   });
+}
+
+// Promo Code Helper Functions
+async function getPromos() {
+  const promos = await kv.get('promos');
+  return (promos && typeof promos === 'object') ? promos : {};
+}
+
+async function savePromos(promos) {
+  await kv.set('promos', promos);
+}
+
+function calculateDiscount(basePrice, promo) {
+  if (!promo) return { finalPrice: basePrice, discountAmount: 0, isValid: false, reason: 'not_found' };
+  
+  if (promo.maxUses > 0 && promo.usedCount >= promo.maxUses) {
+    return { finalPrice: basePrice, discountAmount: 0, isValid: false, reason: 'limit_exceeded' };
+  }
+
+  let discountAmount = 0;
+  if (promo.discountType === 'percent') {
+    discountAmount = Math.round((basePrice * promo.discountValue) / 100);
+  } else {
+    discountAmount = promo.discountValue;
+  }
+
+  let finalPrice = Math.max(0, basePrice - discountAmount);
+  return { finalPrice, discountAmount, isValid: true, reason: 'ok' };
+}
+
+// Helper to issue ticket for user (used by Admin Confirm and 100% Free Promo codes)
+async function issueTicketForUser({ userId, user, seatNumber, confirmedBy, promoCode }) {
+  const ticketId = `TEDX-${Math.floor(100000 + Math.random() * 900000)}`;
+
+  let allocatedSeats = (await kv.get('allocated_seats')) || [];
+  if (!Array.isArray(allocatedSeats)) allocatedSeats = [];
+
+  let finalSeatNum = seatNumber || user.seatNumber;
+
+  if (!finalSeatNum || finalSeatNum < 1 || finalSeatNum > 100) {
+    const activeOccupied = await getActiveOccupiedSeats();
+    const occupiedSeats = activeOccupied.map(i => i.seat);
+    const taken = new Set([...allocatedSeats, ...occupiedSeats]);
+    let next = 1;
+    while (taken.has(next) && next <= 100) next++;
+    finalSeatNum = Math.min(100, next);
+  }
+
+  if (!allocatedSeats.includes(finalSeatNum)) {
+    allocatedSeats.push(finalSeatNum);
+    await kv.set('allocated_seats', allocatedSeats);
+  }
+
+  const totalSold = allocatedSeats.length;
+  await kv.set('total_tickets_sold', totalSold);
+
+  let activeOccupied = await getActiveOccupiedSeats();
+  const initialLen = activeOccupied.length;
+  activeOccupied = activeOccupied.filter(i => i.seat !== finalSeatNum);
+  if (activeOccupied.length !== initialLen) {
+    await kv.set('occupied_seats', activeOccupied);
+  }
+
+  const seatInfo = getSeatDetails(finalSeatNum);
+
+  const ticketData = {
+    id: ticketId,
+    userId: userId,
+    name: user.name || 'Mehmon',
+    phone: user.phone || 'Noma\'lum',
+    seatNumber: seatInfo.seatNumber,
+    seatId: seatInfo.seatId,
+    sector: seatInfo.sector,
+    sectorName: seatInfo.sectorName,
+    row: seatInfo.row,
+    seat: seatInfo.seat,
+    status: 'valid',
+    promoCode: promoCode || null,
+    confirmed_at: new Date().toISOString()
+  };
+  await kv.set(`ticket:${ticketId}`, ticketData);
+  await trackTicket(ticketId);
+
+  user.ticketId = ticketId;
+  user.seatNumber = seatInfo.seatNumber;
+  user.seatId = seatInfo.seatId;
+  user.payment_status = 'confirmed';
+  user.confirmed_at = ticketData.confirmed_at;
+  await kv.set(`user:${userId}`, user);
+
+  const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'TEDxSergeliSpecializedSchool_bot';
+  const qrUrl = `https://t.me/${botUsername}?start=scan_${ticketId}`;
+
+  let photoBuffer = null;
+  try {
+    photoBuffer = await generateTicketQrImage(qrUrl);
+  } catch (genErr) {
+    console.error('Ticket QR generation error:', genErr);
+  }
+
+  const userLang = user.lang || 'ru';
+  let ticketCaption = '';
+
+  if (userLang === 'uz') {
+    ticketCaption =
+      `🎉 <b>${promoCode ? 'Promo-kod orqali tasdiqlandi!' : "To'lov tasdiqlandi!"}</b>\n\n` +
+      `🎟️ <b>TEDxSergeli Specialized School — Rasmiy Elektron Chipta</b>\n\n` +
+      `👤 <b>Mehmon:</b> ${user.name || 'Mehmon'}\n` +
+      `📍 <b>Sektor:</b> ${seatInfo.sectorName}\n` +
+      `📐 <b>O'rin:</b> ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (Umumiy №${seatInfo.seatNumber})\n` +
+      `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n\n` +
+      `📅 <b>Sana:</b> 4-sentabr, 2026\n` +
+      `📍 <b>Manzil:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Ixtisoslashtirilgan Maktabi (Google Maps)</a>\n\n` +
+      `📌 <b>Kirish qoidalari (TEDx Rules):</b>\n` +
+      `• 1️⃣ Tadbir kunida ushbu QR-kodni nazoratchiga ko'rsating.\n` +
+      `• 2️⃣ Eshiklar soat 14:30 da yopiladi. Kechikmang!\n` +
+      `• 3️⃣ Har bir QR-kod faqat 1 marotaba kirish uchun amal qiladi.\n\n` +
+      `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
+  } else if (userLang === 'en') {
+    ticketCaption =
+      `🎉 <b>${promoCode ? 'Confirmed via Promo Code!' : 'Payment confirmed!'}</b>\n\n` +
+      `🎟️ <b>TEDxSergeli Specialized School — Official Ticket</b>\n\n` +
+      `👤 <b>Guest:</b> ${user.name || 'Guest'}\n` +
+      `📍 <b>Sector:</b> ${seatInfo.sector === 5 ? '2nd Floor (Balcony)' : `Sector ${seatInfo.sector}`}\n` +
+      `📐 <b>Seat:</b> Row ${seatInfo.row} / Seat ${seatInfo.seat} (Total №${seatInfo.seatNumber})\n` +
+      `🔑 <b>Ticket ID:</b> <code>${ticketId}</code>\n\n` +
+      `📅 <b>Date:</b> September 4, 2026\n` +
+      `📍 <b>Location:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Specialized School (Google Maps)</a>\n\n` +
+      `📌 <b>Entrance Rules (TEDx Rules):</b>\n` +
+      `• 1️⃣ Show this QR code to the scanner on the day of the event.\n` +
+      `• 2️⃣ Doors close at 14:30. Please arrive on time!\n` +
+      `• 3️⃣ Each QR code is valid for 1 entry only.\n\n` +
+      `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
+  } else {
+    ticketCaption =
+      `🎉 <b>${promoCode ? 'Подтверждено по промокоду!' : 'Оплата подтверждена!'}</b>\n\n` +
+      `🎟️ <b>TEDxSergeli Specialized School — Официальный электронный билет</b>\n\n` +
+      `👤 <b>Гость:</b> ${user.name || 'Гость'}\n` +
+      `📍 <b>Сектор:</b> ${seatInfo.sector === 5 ? '2-Этаж (Балкон)' : `Сектор ${seatInfo.sector}`}\n` +
+      `📐 <b>Место:</b> ${seatInfo.row}-ряд / ${seatInfo.seat}-место (Общий №${seatInfo.seatNumber})\n` +
+      `🔑 <b>ID Билета:</b> <code>${ticketId}</code>\n\n` +
+      `📅 <b>Дата:</b> 4 сентября 2026\n` +
+      `📍 <b>Адрес:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Специализированная школа Сергели (Google Maps)</a>\n\n` +
+      `📌 <b>Правила входа (Правила TEDx):</b>\n` +
+      `• 1️⃣ Покажите этот QR-код контролеру на входе в день мероприятия.\n` +
+      `• 2️⃣ Двери закрываются в 14:30. Пожалуйста, не опаздывайте!\n` +
+      `• 3️⃣ Каждый QR-код действителен только для 1 входа.\n\n` +
+      `ℹ️ <i>TEDxSergeli — независимое мероприятие, проводимое по лицензии TED.</i>`;
+  }
+
+  if (photoBuffer) {
+    await callTelegramPhoto(userId, photoBuffer, ticketCaption);
+  } else {
+    await callTelegram('sendMessage', {
+      chat_id: userId,
+      parse_mode: 'HTML',
+      text: ticketCaption
+    });
+  }
+
+  if (ADMIN_CHAT_ID) {
+    const groupTicketCaption =
+      `🎟️ <b>YANGI CHIPTA ${promoCode ? `(PROMO-KOD: ${promoCode})` : 'BERILDI'}!</b>\n\n` +
+      `👤 <b>Ism:</b> ${user.name || 'Mehmon'}\n` +
+      `📍 <b>Joy:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
+      `📱 <b>Tel / Telegram:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
+      `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n` +
+      `💳 <b>Summa:</b> ${promoCode ? (user.finalPrice ? `${user.finalPrice.toLocaleString()} UZS` : '0 UZS (BEPUL)') : '49,999 UZS'}\n` +
+      `✅ <b>Tasdiqladi:</b> ${confirmedBy || (promoCode ? `Promo-kod (${promoCode})` : 'System')}`;
+
+    try {
+      if (photoBuffer) {
+        await callTelegramPhoto(ADMIN_CHAT_ID, photoBuffer, groupTicketCaption);
+      } else {
+        await callTelegram('sendMessage', {
+          chat_id: ADMIN_CHAT_ID,
+          parse_mode: 'HTML',
+          text: groupTicketCaption
+        });
+      }
+    } catch (dupErr) {
+      console.error('Failed to duplicate ticket to admin chat:', dupErr);
+    }
+  }
+
+  return { ticketId, seatInfo };
 }
 
 // Helper to track user IDs for broadcasting
@@ -388,6 +574,10 @@ export default async function handler(req, res) {
               `• <code>/add_admin @username</code> — Назначить Со-Администратора\n` +
               `• <code>/del_admin @username</code> — Снять Со-Администратора\n` +
               `• <code>/admins</code> — Список всех Администраторов (кнопка <b>👑 Админы</b>)\n\n` +
+              `🏷 <b>Система Промокодов:</b>\n` +
+              `• <code>/add_promo <КОД> <СКИДКА> [ЛИМИТ]</code> — Создать промокод\n` +
+              `• <code>/del_promo <КОД></code> — Удалить промокод\n` +
+              `• <code>/promos</code> — Список промокодов (кнопка <b>🏷 Промокоды</b>)\n\n` +
               `🎫 <b>Управление Контролерами Билетов:</b>\n` +
               `• <code>/add_scanner @username</code> — Назначить волонтера-контролера\n` +
               `• <code>/del_scanner @username</code> — Удалить контролера\n` +
@@ -409,6 +599,166 @@ export default async function handler(req, res) {
                 ]
               ]
             }
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        // Create / Add Promo Code Command
+        if (text.startsWith('/add_promo')) {
+          const parts = text.trim().split(/\s+/);
+          const code = (parts[1] || '').toUpperCase().trim();
+          const discountRaw = (parts[2] || '').trim();
+          const limitRaw = parseInt(parts[3] || '0', 10) || 0;
+
+          if (!code || !discountRaw) {
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `⚠️ <b>Формат создания промокода:</b>\n` +
+                `<code>/add_promo <КОД> <СКИДКА> [ЛИМИТ]</code>\n\n` +
+                `<b>Примеры:</b>\n` +
+                `• <code>/add_promo VIP 100%</code> — Бесплатный VIP билет (без лимита)\n` +
+                `• <code>/add_promo EARLY20 20% 50</code> — Скидка 20% для первых 50 чел.\n` +
+                `• <code>/add_promo SAVE10K 10000 100</code> — Скидка 10,000 UZS для 100 чел.`,
+              reply_markup: ADMIN_KEYBOARD
+            });
+            return res.status(200).json({ ok: true });
+          }
+
+          let discountType = 'fixed';
+          let discountValue = 0;
+
+          if (discountRaw.endsWith('%')) {
+            discountType = 'percent';
+            discountValue = Math.min(100, Math.max(1, parseInt(discountRaw.replace('%', ''), 10) || 0));
+          } else {
+            discountType = 'fixed';
+            discountValue = Math.max(1, parseInt(discountRaw.replace(/\D/g, ''), 10) || 0);
+          }
+
+          const promos = await getPromos();
+          const creator = from.username ? `@${from.username}` : (from.first_name || String(from.id));
+          
+          promos[code] = {
+            code,
+            discountType,
+            discountValue,
+            maxUses: limitRaw,
+            usedCount: promos[code]?.usedCount || 0,
+            createdBy: creator,
+            createdAt: new Date().toISOString()
+          };
+
+          await savePromos(promos);
+
+          const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'TEDxSergeliSpecializedSchool_bot';
+          const deepLink = `https://t.me/${botUsername}?start=promo_${code}`;
+          const discountStr = discountType === 'percent' ? `${discountValue}%` : `${discountValue.toLocaleString()} UZS`;
+          const limitStr = limitRaw > 0 ? `${limitRaw} ta` : 'Cheksiz / Неограниченно';
+
+          const msg = `✅ <b>PROMO-KOD YARATILDI / ПРОМОКОД СОЗДАН!</b>\n\n` +
+            `🔑 <b>Код:</b> <code>${code}</code>\n` +
+            `🏷 <b>Скидка:</b> ${discountStr}\n` +
+            `🔢 <b>Лимит:</b> ${limitStr}\n` +
+            `👤 <b>Создатель:</b> ${creator}\n\n` +
+            `🔗 <b>Прямая ссылка для клиентов:</b>\n<code>${deepLink}</code>`;
+
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: msg,
+            reply_markup: ADMIN_KEYBOARD
+          });
+
+          // Notify Admin Thread / Chat about the new promo code
+          if (ADMIN_CHAT_ID && String(ADMIN_CHAT_ID) !== String(chatId)) {
+            try {
+              await callTelegram('sendMessage', {
+                chat_id: ADMIN_CHAT_ID,
+                parse_mode: 'HTML',
+                text: `📣 <b>YANGI PROMO-KOD / НОВЫЙ ПРОМОКОД:</b>\n\n` +
+                  `🔑 <b>Код:</b> <code>${code}</code> (${discountStr})\n` +
+                  `🔢 <b>Лимит:</b> ${limitStr}\n` +
+                  `👤 <b>Админ:</b> ${creator}\n` +
+                  `🔗 <b>Ссылка:</b> <code>${deepLink}</code>`
+              });
+            } catch (notifyErr) {
+              console.error('Failed to notify admin chat:', notifyErr);
+            }
+          }
+
+          return res.status(200).json({ ok: true });
+        }
+
+        // Delete Promo Code
+        if (text.startsWith('/del_promo')) {
+          const code = text.replace('/del_promo', '').trim().toUpperCase();
+          if (!code) {
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `⚠️ <b>Использование:</b> <code>/del_promo <КОД></code>`,
+              reply_markup: ADMIN_KEYBOARD
+            });
+            return res.status(200).json({ ok: true });
+          }
+
+          const promos = await getPromos();
+          if (promos[code]) {
+            delete promos[code];
+            await savePromos(promos);
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `🗑 <b>Промокод <code>${code}</code> успешно удален.</b>`,
+              reply_markup: ADMIN_KEYBOARD
+            });
+          } else {
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `❌ <b>Промокод <code>${code}</code> не найден.</b>`,
+              reply_markup: ADMIN_KEYBOARD
+            });
+          }
+          return res.status(200).json({ ok: true });
+        }
+
+        // List Promo Codes (/promos or 🏷 Промокоды)
+        if (text === '/promos' || text === '🏷 Промокоды') {
+          const promos = await getPromos();
+          const promoList = Object.values(promos);
+
+          const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'TEDxSergeliSpecializedSchool_bot';
+
+          if (promoList.length === 0) {
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `🏷 <b>СПИСОК ПРОМОКОДОВ:</b>\n\n<i>Промокоды пока не созданы.</i>\n\nЧтобы создать промокод, используйте:\n<code>/add_promo VIP 100%</code>`,
+              reply_markup: ADMIN_KEYBOARD
+            });
+            return res.status(200).json({ ok: true });
+          }
+
+          let listText = `🏷 <b>СПИСОК АКТИВНЫХ ПРОМОКОДОВ (${promoList.length}):</b>\n\n`;
+          promoList.forEach((p, idx) => {
+            const discStr = p.discountType === 'percent' ? `${p.discountValue}%` : `${p.discountValue.toLocaleString()} UZS`;
+            const limitStr = p.maxUses > 0 ? `${p.usedCount}/${p.maxUses}` : `${p.usedCount} (безлимит)`;
+            const deepLink = `https://t.me/${botUsername}?start=promo_${p.code}`;
+
+            listText += `${idx + 1}. 🔑 <b><code>${p.code}</code></b> — Скидка: <b>${discStr}</b>\n` +
+              `   📊 Использовано: ${limitStr} | Создал: ${p.createdBy || 'Admin'}\n` +
+              `   🔗 <code>${deepLink}</code>\n\n`;
+          });
+
+          listText += `<i>Для удаления промокода: <code>/del_promo КОД</code></i>`;
+
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: listText,
+            reply_markup: ADMIN_KEYBOARD
           });
           return res.status(200).json({ ok: true });
         }
@@ -971,11 +1321,22 @@ export default async function handler(req, res) {
         }
 
         // Standard registration start for new users
+        let promoCodeFromPayload = null;
+        if (payload.startsWith('promo_')) {
+          promoCodeFromPayload = payload.replace('promo_', '').trim().toUpperCase();
+        } else if (payload && payload !== 'direct') {
+          const allPromos = await getPromos();
+          if (allPromos[payload.toUpperCase()]) {
+            promoCodeFromPayload = payload.toUpperCase();
+          }
+        }
+
         let user = {
           ...existingUser,
           chatId,
           step: existingUser.step || 'LANG',
           source: payload,
+          promoCode: promoCodeFromPayload || existingUser.promoCode || null,
           payment_status: existingUser.payment_status || 'none'
         };
         await kv.set(`user:${chatId}`, user);
@@ -1103,7 +1464,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
 
-      // 3. User sends Phone -> Auto-assign next sequential seat and request payment
+      // 3. User sends Phone -> Auto-assign next sequential seat and check Promo Code / Payment
       if (user.step === 'PHONE') {
         if (contact) {
           user.phone = contact.phone_number;
@@ -1120,7 +1481,6 @@ export default async function handler(req, res) {
           const occupiedSeatNumbers = activeOccupied.map(i => i.seat);
           const allTaken = new Set([...occupiedSeatNumbers, ...allocatedSeats]);
           
-          // Start from seat 1 and find the first available to fill gaps
           let nextSeatNumber = 1;
           while (allTaken.has(nextSeatNumber) && nextSeatNumber <= 100) {
             nextSeatNumber++;
@@ -1133,49 +1493,173 @@ export default async function handler(req, res) {
 
           user.seatNumber = nextSeatNumber;
           user.seatId = `SEAT-${nextSeatNumber}`;
-          user.step = 'PAYMENT';
-          user.payment_status = 'pending_payment';
           user.bookingExpiresAt = Date.now() + 15 * 60 * 1000;
+
+          // Check if user came via Promo Code deep link
+          if (user.promoCode) {
+            const promos = await getPromos();
+            const promo = promos[user.promoCode.toUpperCase()];
+            const discountInfo = calculateDiscount(49999, promo);
+
+            if (discountInfo.isValid) {
+              user.appliedDiscount = discountInfo.discountAmount;
+              user.finalPrice = discountInfo.finalPrice;
+
+              if (discountInfo.finalPrice === 0) {
+                // 100% Free Ticket
+                promo.usedCount = (promo.usedCount || 0) + 1;
+                await savePromos(promos);
+                
+                await issueTicketForUser({
+                  userId: chatId,
+                  user,
+                  confirmedBy: `Promo-kod (${user.promoCode})`,
+                  promoCode: user.promoCode
+                });
+                return res.status(200).json({ ok: true });
+              }
+            }
+          }
+
+          // Move to PROMO step to ask for promo code or skip
+          user.step = 'PROMO';
           await kv.set(`user:${chatId}`, user);
 
-          const seatInfo = getSeatDetails(nextSeatNumber);
           const lang = user.lang || 'ru';
+          let promoPrompt = '';
+          let skipBtnText = '';
 
-          let msg = '';
           if (lang === 'uz') {
-            msg = `✅ <b>Siz uchun navbatdagi joy ajratildi: #${seatInfo.seatNumber}</b>\n` +
-              `📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin\n\n` +
-              `⏳ <b>Eslatma:</b> To'lov chekini yuborish uchun sizda <b>15 daqiqa</b> bor. Aks holda, ushbu joy boshqa ishtirokchilar uchun ochiladi.\n\n` +
-              `💳 <b>To'lov miqdori:</b> 49 999 UZS\n` +
-              `💳 <b>Karta raqami:</b> <code>5614 6822 1091 3879</code>\n` +
-              `👤 <b>Qabul qiluvchi:</b> Abidjanov Baxtiyor\n\n` +
-              `📸 To'lovni amalga oshirgach, <b>chek (скриншот)</b>ni shu yerga yuboring.`;
+            promoPrompt = `🏷 <b>Sizda promo-kod bormi?</b>\n\nAgar chegirma yoki bepul chipta uchun promo-kodingiz bo'lsa, uni hozir yozib yuboring.\nAks holda <b>«➡️ O'tkazib yuborish»</b> tugmasini bosing.`;
+            skipBtnText = "➡️ O'tkazib yuborish";
           } else if (lang === 'en') {
-            msg = `✅ <b>Next available seat assigned to you: #${seatInfo.seatNumber}</b>\n` +
-              `📍 <b>Seat:</b> ${seatInfo.sectorName}, Row ${seatInfo.row} / Seat ${seatInfo.seat}\n\n` +
-              `⏳ <b>Notice:</b> You have <b>15 minutes</b> to send your payment receipt screenshot. Otherwise, your seat reservation will be released to other attendees.\n\n` +
-              `💳 <b>Amount:</b> 49,999 UZS\n` +
-              `💳 <b>Card Number:</b> <code>5614 6822 1091 3879</code>\n` +
-              `👤 <b>Recipient:</b> Abidjanov Baxtiyor\n\n` +
-              `📸 After payment, please send the receipt screenshot here.`;
+            promoPrompt = `🏷 <b>Do you have a promo code?</b>\n\nIf you have a promo code for a discount or free ticket, enter it now.\nOtherwise, tap <b>«➡️ Skip»</b>.`;
+            skipBtnText = "➡️ Skip";
           } else {
-            msg = `✅ <b>Вам выделено следующее место по очереди: №${seatInfo.seatNumber}</b>\n` +
-              `📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место\n\n` +
-              `⏳ <b>Внимание:</b> У вас есть <b>15 минут</b> на отправку чека об оплате. В противном случае забронированное место станет доступным для других участников.\n\n` +
-              `💳 <b>Сумма к оплате:</b> 49 999 UZS\n` +
-              `💳 <b>Номер карты:</b> <code>5614 6822 1091 3879</code>\n` +
-              `👤 <b>Получатель:</b> Abidjanov Baxtiyor\n\n` +
-              `📸 После оплаты отправьте <b>скриншот чека</b> в этот чат.`;
+            promoPrompt = `🏷 <b>У вас есть промокод?</b>\n\nЕсли у вас есть промокод на скидку или бесплатный билет, введите его прямо сейчас.\nЕсли нет, нажмите кнопку <b>«➡️ Пропустить»</b>.`;
+            skipBtnText = "➡️ Пропустить";
           }
 
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: msg,
-            reply_markup: { remove_keyboard: true }
+            text: promoPrompt,
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: skipBtnText, callback_data: 'skip_promo' }]
+              ]
+            }
           });
           return res.status(200).json({ ok: true });
         }
+      }
+
+      // Handle user entering Promo Code (Step: PROMO)
+      if (user.step === 'PROMO' && text) {
+        const inputCode = text.trim().toUpperCase();
+        const promos = await getPromos();
+        const promo = promos[inputCode];
+
+        if (!promo) {
+          const lang = user.lang || 'ru';
+          let errText = lang === 'uz'
+            ? `❌ <b>Promo-kod topilmadi.</b> Qaytadan kiriting yoki <b>«➡️ O'tkazib yuborish»</b> tugmasini bosing.`
+            : lang === 'en'
+            ? `❌ <b>Promo code not found.</b> Try again or tap <b>«➡️ Skip»</b>.`
+            : `❌ <b>Промокод не найден.</b> Попробуйте еще раз или нажмите <b>«➡️ Пропустить»</b>.`;
+          
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: errText,
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: lang === 'uz' ? "➡️ O'tkazib yuborish" : lang === 'en' ? "➡️ Skip" : "➡️ Пропустить", callback_data: 'skip_promo' }]
+              ]
+            }
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        const discountInfo = calculateDiscount(49999, promo);
+        if (!discountInfo.isValid) {
+          const lang = user.lang || 'ru';
+          let errText = discountInfo.reason === 'limit_exceeded'
+            ? (lang === 'uz' ? `❌ <b>Ushbu promo-kodning foydalanish soni tugagan.</b>` : `❌ <b>Лимит использования этого промокода исчерпан.</b>`)
+            : (lang === 'uz' ? `❌ <b>Promo-kod yaroqsiz.</b>` : `❌ <b>Промокод недействителен.</b>`);
+
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: errText,
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: lang === 'uz' ? "➡️ O'tkazib yuborish" : lang === 'en' ? "➡️ Skip" : "➡️ Пропустить", callback_data: 'skip_promo' }]
+              ]
+            }
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        // Promo code is VALID!
+        user.promoCode = inputCode;
+        user.appliedDiscount = discountInfo.discountAmount;
+        user.finalPrice = discountInfo.finalPrice;
+
+        if (discountInfo.finalPrice === 0) {
+          // 100% Free Ticket!
+          promo.usedCount = (promo.usedCount || 0) + 1;
+          await savePromos(promos);
+
+          await issueTicketForUser({
+            userId: chatId,
+            user,
+            confirmedBy: `Promo-kod (${inputCode})`,
+            promoCode: inputCode
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        // Partial discount - proceed to PAYMENT
+        user.step = 'PAYMENT';
+        user.payment_status = 'pending_payment';
+        await kv.set(`user:${chatId}`, user);
+
+        const lang = user.lang || 'ru';
+        const discStr = promo.discountType === 'percent' ? `${promo.discountValue}%` : `${promo.discountValue.toLocaleString()} UZS`;
+        const seatInfo = getSeatDetails(user.seatNumber || 1);
+        let msg = '';
+
+        if (lang === 'uz') {
+          msg = `✅ <b>Promo-kod <code>${inputCode}</code> qabul qilindi!</b> (${discStr} chegirma)\n\n` +
+            `📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin\n\n` +
+            `💳 <b>To'lov miqdori:</b> <s>49 999 UZS</s> ➡️ <b>${discountInfo.finalPrice.toLocaleString()} UZS</b>\n` +
+            `💳 <b>Karta raqami:</b> <code>5614 6822 1091 3879</code>\n` +
+            `👤 <b>Qabul qiluvchi:</b> Abidjanov Baxtiyor\n\n` +
+            `📸 To'lovni amalga oshirgach, <b>chek (скриншот)</b>ni shu yerga yuboring.`;
+        } else if (lang === 'en') {
+          msg = `✅ <b>Promo code <code>${inputCode}</code> applied!</b> (${discStr} discount)\n\n` +
+            `📍 <b>Seat:</b> ${seatInfo.sectorName}, Row ${seatInfo.row} / Seat ${seatInfo.seat}\n\n` +
+            `💳 <b>Amount:</b> <s>49,999 UZS</s> ➡️ <b>${discountInfo.finalPrice.toLocaleString()} UZS</b>\n` +
+            `💳 <b>Card Number:</b> <code>5614 6822 1091 3879</code>\n` +
+            `👤 <b>Recipient:</b> Abidjanov Baxtiyor\n\n` +
+            `📸 After payment, please send the receipt screenshot here.`;
+        } else {
+          msg = `✅ <b>Промокод <code>${inputCode}</code> применен!</b> (Скидка ${discStr})\n\n` +
+            `📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место\n\n` +
+            `💳 <b>Сумма к оплате:</b> <s>49 999 UZS</s> ➡️ <b>${discountInfo.finalPrice.toLocaleString()} UZS</b>\n` +
+            `💳 <b>Номер карты:</b> <code>5614 6822 1091 3879</code>\n` +
+            `👤 <b>Получатель:</b> Abidjanov Baxtiyor\n\n` +
+            `📸 После оплаты отправьте <b>скриншот чека</b> в этот чат.`;
+        }
+
+        await callTelegram('sendMessage', {
+          chat_id: chatId,
+          parse_mode: 'HTML',
+          text: msg,
+          reply_markup: { remove_keyboard: true }
+        });
+        return res.status(200).json({ ok: true });
       }
 
       // 4. User sends Payment Receipt Photo
@@ -1306,6 +1790,52 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
 
+      // Handle Skip Promo Callback
+      if (data === 'skip_promo') {
+        let user = (await kv.get(`user:${chatId}`)) || {};
+        user.step = 'PAYMENT';
+        user.payment_status = 'pending_payment';
+        user.finalPrice = 49999;
+        await kv.set(`user:${chatId}`, user);
+
+        const lang = user.lang || 'ru';
+        const seatInfo = getSeatDetails(user.seatNumber || 1);
+        let msg = '';
+        if (lang === 'uz') {
+          msg = `✅ <b>Siz uchun navbatdagi joy ajratildi: #${seatInfo.seatNumber}</b>\n` +
+            `📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin\n\n` +
+            `⏳ <b>Eslatma:</b> To'lov chekini yuborish uchun sizda <b>15 daqiqa</b> bor.\n\n` +
+            `💳 <b>To'lov miqdori:</b> 49 999 UZS\n` +
+            `💳 <b>Karta raqami:</b> <code>5614 6822 1091 3879</code>\n` +
+            `👤 <b>Qabul qiluvchi:</b> Abidjanov Baxtiyor\n\n` +
+            `📸 To'lovni amalga oshirgach, <b>chek (скриншот)</b>ni shu yerga yuboring.`;
+        } else if (lang === 'en') {
+          msg = `✅ <b>Next available seat assigned to you: #${seatInfo.seatNumber}</b>\n` +
+            `📍 <b>Seat:</b> ${seatInfo.sectorName}, Row ${seatInfo.row} / Seat ${seatInfo.seat}\n\n` +
+            `⏳ <b>Notice:</b> You have <b>15 minutes</b> to send your payment receipt screenshot.\n\n` +
+            `💳 <b>Amount:</b> 49,999 UZS\n` +
+            `💳 <b>Card Number:</b> <code>5614 6822 1091 3879</code>\n` +
+            `👤 <b>Recipient:</b> Abidjanov Baxtiyor\n\n` +
+            `📸 After payment, please send the receipt screenshot here.`;
+        } else {
+          msg = `✅ <b>Вам выделено следующее место по очереди: №${seatInfo.seatNumber}</b>\n` +
+            `📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место\n\n` +
+            `⏳ <b>Внимание:</b> У вас есть <b>15 минут</b> на отправку чека об оплате.\n\n` +
+            `💳 <b>Сумма к оплате:</b> 49 999 UZS\n` +
+            `💳 <b>Номер карты:</b> <code>5614 6822 1091 3879</code>\n` +
+            `👤 <b>Получатель:</b> Abidjanov Baxtiyor\n\n` +
+            `📸 После оплаты отправьте <b>скриншот чека</b> в этот чат.`;
+        }
+
+        await callTelegram('sendMessage', {
+          chat_id: chatId,
+          parse_mode: 'HTML',
+          text: msg
+        });
+        await callTelegram('answerCallbackQuery', { callback_query_id: id });
+        return res.status(200).json({ ok: true });
+      }
+
       // Handle Admin Actions (Confirm / Reject)
       if (data.startsWith('confirm_') || data.startsWith('reject_')) {
         const [action, userIdStr] = data.split('_');
@@ -1322,154 +1852,13 @@ export default async function handler(req, res) {
         }
 
         if (action === 'confirm') {
-          const ticketId = `TEDX-${Math.floor(100000 + Math.random() * 900000)}`;
-
-          let allocatedSeats = (await kv.get('allocated_seats')) || [];
-          if (!Array.isArray(allocatedSeats)) allocatedSeats = [];
-
-          let seatNumber = user.seatNumber || (user.seatId ? parseInt(String(user.seatId).replace(/\D/g, ''), 10) : null);
-
-          if (!seatNumber || seatNumber < 1 || seatNumber > 100) {
-            seatNumber = allocatedSeats.length + 1;
-            if (seatNumber > 100) seatNumber = 100;
-          }
-
-          if (!allocatedSeats.includes(seatNumber)) {
-            allocatedSeats.push(seatNumber);
-            await kv.set('allocated_seats', allocatedSeats);
-          }
-
-          const totalSold = allocatedSeats.length;
-          await kv.set('total_tickets_sold', totalSold);
-
-          let activeOccupied = await getActiveOccupiedSeats();
-          const initialLen = activeOccupied.length;
-          activeOccupied = activeOccupied.filter(i => i.seat !== seatNumber);
-          if (activeOccupied.length !== initialLen) {
-            await kv.set('occupied_seats', activeOccupied);
-          }
-
-          const seatInfo = getSeatDetails(seatNumber);
-
-          const ticketData = {
-            id: ticketId,
-            userId: userId,
-            name: user.name || 'Mehmon',
-            phone: user.phone || 'Noma\'lum',
-            seatNumber: seatInfo.seatNumber,
-            seatId: seatInfo.seatId,
-            sector: seatInfo.sector,
-            sectorName: seatInfo.sectorName,
-            row: seatInfo.row,
-            seat: seatInfo.seat,
-            status: 'valid',
-            confirmed_at: new Date().toISOString()
-          };
-          await kv.set(`ticket:${ticketId}`, ticketData);
-          await trackTicket(ticketId);
-
-          user.ticketId = ticketId;
-          user.seatNumber = seatInfo.seatNumber;
-          user.seatId = seatInfo.seatId;
-          user.payment_status = 'confirmed';
-          await kv.set(`user:${userId}`, user);
-
-          const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'TEDxSergeliSpecializedSchool_bot';
-          const qrUrl = `https://t.me/${botUsername}?start=scan_${ticketId}`;
-
-          // Generate PNG QR code image
-          let photoBuffer = null;
-          try {
-            photoBuffer = await generateTicketQrImage(qrUrl);
-          } catch (genErr) {
-            console.error('Ticket QR generation error:', genErr);
-          }
-
-          const userLang = user.lang || 'ru';
-          let ticketCaption = '';
-
-          if (userLang === 'uz') {
-            ticketCaption =
-              `🎉 <b>To'lov tasdiqlandi!</b>\n\n` +
-              `🎟️ <b>TEDxSergeli Specialized School — Rasmiy Elektron Chipta</b>\n\n` +
-              `👤 <b>Mehmon:</b> ${user.name || 'Mehmon'}\n` +
-              `📍 <b>Sektor:</b> ${seatInfo.sectorName}\n` +
-              `📐 <b>O'rin:</b> ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (Umumiy №${seatInfo.seatNumber})\n` +
-              `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n\n` +
-              `📅 <b>Sana:</b> 4-sentabr, 2026\n` +
-              `📍 <b>Manzil:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Ixtisoslashtirilgan Maktabi (Google Maps)</a>\n\n` +
-              `📌 <b>Kirish qoidalari (TEDx Rules):</b>\n` +
-              `• 1️⃣ Tadbir kunida ushbu QR-kodni nazoratchiga ko'rsating.\n` +
-              `• 2️⃣ Eshiklar soat 14:30 da yopiladi. Kechikmang!\n` +
-              `• 3️⃣ Har bir QR-kod faqat 1 marotaba kirish uchun amal qiladi.\n\n` +
-              `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
-          } else if (userLang === 'en') {
-            ticketCaption =
-              `🎉 <b>Payment confirmed!</b>\n\n` +
-              `🎟️ <b>TEDxSergeli Specialized School — Official Ticket</b>\n\n` +
-              `👤 <b>Guest:</b> ${user.name || 'Guest'}\n` +
-              `📍 <b>Sector:</b> ${seatInfo.sector === 5 ? '2nd Floor (Balcony)' : `Sector ${seatInfo.sector}`}\n` +
-              `📐 <b>Seat:</b> Row ${seatInfo.row} / Seat ${seatInfo.seat} (Total №${seatInfo.seatNumber})\n` +
-              `🔑 <b>Ticket ID:</b> <code>${ticketId}</code>\n\n` +
-              `📅 <b>Date:</b> September 4, 2026\n` +
-              `📍 <b>Location:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Specialized School (Google Maps)</a>\n\n` +
-              `📌 <b>Entrance Rules (TEDx Rules):</b>\n` +
-              `• 1️⃣ Show this QR code to the scanner on the day of the event.\n` +
-              `• 2️⃣ Doors close at 14:30. Please arrive on time!\n` +
-              `• 3️⃣ Each QR code is valid for 1 entry only.\n\n` +
-              `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
-          } else {
-            ticketCaption =
-              `🎉 <b>Оплата подтверждена!</b>\n\n` +
-              `🎟️ <b>TEDxSergeli Specialized School — Официальный электронный билет</b>\n\n` +
-              `👤 <b>Гость:</b> ${user.name || 'Гость'}\n` +
-              `📍 <b>Сектор:</b> ${seatInfo.sector === 5 ? '2-Этаж (Балкон)' : `Сектор ${seatInfo.sector}`}\n` +
-              `📐 <b>Место:</b> ${seatInfo.row}-ряд / ${seatInfo.seat}-место (Общий №${seatInfo.seatNumber})\n` +
-              `🔑 <b>ID Билета:</b> <code>${ticketId}</code>\n\n` +
-              `📅 <b>Дата:</b> 4 сентября 2026\n` +
-              `📍 <b>Адрес:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Специализированная школа Сергели (Google Maps)</a>\n\n` +
-              `📌 <b>Правила входа (Правила TEDx):</b>\n` +
-              `• 1️⃣ Покажите этот QR-код контролеру на входе в день мероприятия.\n` +
-              `• 2️⃣ Двери закрываются в 14:30. Пожалуйста, не опаздывайте!\n` +
-              `• 3️⃣ Каждый QR-код действителен только для 1 входа.\n\n` +
-              `ℹ️ <i>TEDxSergeli — независимое мероприятие, проводимое по лицензии TED.</i>`;
-          }
-
-          if (photoBuffer) {
-            await callTelegramPhoto(userId, photoBuffer, ticketCaption);
-          } else {
-            await callTelegram('sendMessage', {
-              chat_id: userId,
-              parse_mode: 'HTML',
-              text: ticketCaption
-            });
-          }
-
-          // Duplicate Confirmed Ticket photo to General Group Chat
-          if (ADMIN_CHAT_ID) {
-            const groupTicketCaption =
-              `🎟️ <b>YANGI CHIPTA SOTILDI!</b>\n\n` +
-              `👤 <b>Ism:</b> ${user.name || 'Mehmon'}\n` +
-              `📍 <b>Joy:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
-              `📱 <b>Tel / Telegram:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
-              `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n` +
-              `💳 <b>Summa:</b> 49,999 UZS\n` +
-              `✅ <b>Tasdiqladi:</b> @${adminUsername}`;
-
-            try {
-              if (photoBuffer) {
-                await callTelegramPhoto(ADMIN_CHAT_ID, photoBuffer, groupTicketCaption);
-              } else {
-                await callTelegram('sendMessage', {
-                  chat_id: ADMIN_CHAT_ID,
-                  parse_mode: 'HTML',
-                  text: groupTicketCaption
-                });
-              }
-            } catch (dupErr) {
-              console.error('Failed to duplicate ticket to general group:', dupErr);
-            }
-          }
+          const { ticketId, seatInfo } = await issueTicketForUser({
+            userId,
+            user,
+            seatNumber: user.seatNumber,
+            confirmedBy: `@${adminUsername}`,
+            promoCode: user.promoCode || null
+          });
 
           await callTelegram('editMessageCaption', {
             chat_id: message.chat.id,

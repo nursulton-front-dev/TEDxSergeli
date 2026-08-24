@@ -26,24 +26,33 @@ function SpeakerCard({
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-50px' });
   const t = translations.speakers;
+  const [imgError, setImgError] = useState(false);
 
   return (
     <motion.div
       ref={ref}
       initial={{ opacity: 0, y: 30 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
+      transition={{ duration: 0.5, delay: index * 0.08 }}
       className="group relative cursor-pointer h-full"
       onClick={() => onSelect(speaker)}
     >
       <div className="relative h-full flex flex-col rounded-2xl overflow-hidden bg-gradient-to-b from-ted-bg-card to-ted-bg border border-ted-border hover:border-ted-red/40 shadow-sm hover:shadow-xl hover:shadow-ted-red/5 transition-all duration-500">
         {/* Image Container */}
-        <div className="relative aspect-[4/3] w-full overflow-hidden bg-ted-bg-alt">
-          <img
-            src={speaker.image}
-            alt={speaker.name[lang]}
-            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
-          />
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-ted-bg-alt flex items-center justify-center">
+          {!imgError ? (
+            <img
+              src={speaker.image}
+              alt={speaker.name[lang]}
+              onError={() => setImgError(true)}
+              className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-ted-red/20 to-ted-bg-card text-ted-text p-4">
+              <User size={64} className="text-ted-red/60 mb-2" />
+              <span className="text-sm font-bold text-center">{speaker.name[lang]}</span>
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-ted-bg-card via-transparent to-transparent opacity-80" />
           
           <div className="absolute top-3 left-3 px-3 py-1 bg-ted-red/90 text-white font-bold text-xs uppercase tracking-wider rounded-full backdrop-blur-md flex items-center gap-1 shadow-md">
@@ -151,7 +160,7 @@ export default function Speakers() {
         </AnimatedSection>
 
         {/* Real Speakers Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mb-12">
           {t.list.map((speaker, i) => (
             <SpeakerCard
               key={speaker.id}
@@ -162,17 +171,19 @@ export default function Speakers() {
           ))}
         </div>
 
-        {/* Upcoming Speakers Teasers */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {t.teasers.map((teaser, i) => (
-            <TeaserCard
-              key={i}
-              role={teaser[lang]}
-              topic={t.tba[lang]}
-              index={t.list.length + i}
-            />
-          ))}
-        </div>
+        {/* Upcoming Speakers Teasers (if any) */}
+        {t.teasers.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {t.teasers.map((teaser, i) => (
+              <TeaserCard
+                key={i}
+                role={teaser[lang]}
+                topic={t.tba[lang]}
+                index={t.list.length + i}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Speaker Bio Modal */}
