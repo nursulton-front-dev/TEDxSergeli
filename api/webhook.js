@@ -734,17 +734,27 @@ export default async function handler(req, res) {
           return res.status(200).json({ ok: true });
         }
 
-        // Create / Add Promo Code Command
+        // Create / Add Promo Code Command (/add_promo <КОД> <СКИДКА> [ЛИМИТ])
         if (text.startsWith('/add_promo')) {
-          const parts = text.trim().split(/\s+/);
-          const code = (parts[1] || '').toUpperCase().trim();
-          const discountRaw = (parts[2] || '').trim();
-          const limitRaw = parseInt(parts[3] || '0', 10) || 0;
-
-          if (!code || !discountRaw) {
-            await renderPromoList(chatId);
+          const match = text.trim().match(/^\/add_promo\s+([A-Za-z0-9_-]+)\s+(\d+%?|\d+k?|\d+)(?:\s+(\d+))?$/i);
+          if (!match) {
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `⚠️ <b>Неверный формат команды!</b>\n\n` +
+                `Формат: <code>/add_promo <КОД> <СКИДКА> [ЛИМИТ]</code>\n\n` +
+                `Примеры:\n` +
+                `• <code>/add_promo VIP 100%</code> — Бесплатный билет\n` +
+                `• <code>/add_promo SALE20 20% 50</code> — 20% скидка для 50 человек\n` +
+                `• <code>/add_promo SAVE10K 10000 100</code> — Скидка 10,000 UZS для 100 человек`,
+              reply_markup: ADMIN_KEYBOARD
+            });
             return res.status(200).json({ ok: true });
           }
+
+          const code = match[1].toUpperCase();
+          const discountRaw = match[2];
+          const limitRaw = parseInt(match[3] || '0', 10) || 0;
 
           let discountType = 'fixed';
           let discountValue = 0;
