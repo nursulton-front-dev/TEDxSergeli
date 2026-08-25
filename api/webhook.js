@@ -6,12 +6,20 @@ const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST
 // Lightweight KV implementation for Upstash Redis
 const kv = {
   get: async (key) => {
-    if (!KV_URL) return null;
+    if (!KV_URL || !KV_TOKEN) {
+      throw new Error('KV REST credentials are not configured');
+    }
     try {
       const res = await fetch(`${KV_URL}/get/${key}`, {
         headers: { Authorization: `Bearer ${KV_TOKEN}` }
       });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = await res.json();
+      if (data && data.error) {
+        throw new Error(String(data.error));
+      }
       if (!data.result) return null;
 
       let parsed = JSON.parse(data.result);
@@ -21,19 +29,28 @@ const kv = {
       return parsed;
     } catch (e) {
       console.error('KV GET Error:', e);
-      return null;
+      throw e;
     }
   },
   set: async (key, value) => {
-    if (!KV_URL) return;
+    if (!KV_URL || !KV_TOKEN) return false;
     try {
-      await fetch(`${KV_URL}/set/${key}`, {
+      const res = await fetch(`${KV_URL}/set/${key}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${KV_TOKEN}` },
         body: typeof value === 'object' ? JSON.stringify(value) : String(value)
       });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      if (data && data.error) {
+        throw new Error(String(data.error));
+      }
+      return true;
     } catch (e) {
       console.error('KV SET Error:', e);
+      return false;
     }
   }
 };
@@ -47,6 +64,110 @@ const API_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
 // Production WebApp Domain (Prevents Vercel preview login wall)
 const PUBLIC_DOMAIN = process.env.PUBLIC_URL || 'https://tedx-sergeli.vercel.app';
+
+// This project talks to the Telegram Bot API directly, so conversational state
+// is persisted in KV instead of being managed by a framework-level FSM.
+const PROMO_CREATION_STATES = Object.freeze({
+  CODE: 'PROMO_CREATE_CODE',
+  DISCOUNT: 'PROMO_CREATE_DISCOUNT',
+  LIMIT: 'PROMO_CREATE_LIMIT'
+});
+
+const PROMO_WIZARD_TTL_MS = 30 * 60 * 1000;
+const PROMO_WIZARD_CANCEL_CALLBACK_PREFIX = 'promo_create_cancel';
+const TELEGRAM_FORMAT_CHARS_RE = /[\p{Cf}\uFE00-\uFE0F]/gu;
+
+const PROMO_WIZARD_CODE_PROMPT = `➕ <b>СОЗДАНИЕ ПРОМОКОДА — ШАГ 1/4</b>\n\n` +
+  `Введите название промокода.\n\n` +
+  `Пробелы будут удалены, а код автоматически переведён в верхний регистр.\n` +
+  `Допустимы латинские буквы, цифры, дефис и подчёркивание.\n\n` +
+  `Пример: <code>SALE20</code>`;
+
+function createPromoWizardSessionId() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function promoWizardCancelKeyboard(sessionId) {
+  const callbackData = sessionId
+    ? `${PROMO_WIZARD_CANCEL_CALLBACK_PREFIX}:${sessionId}`
+    : PROMO_WIZARD_CANCEL_CALLBACK_PREFIX;
+
+  return {
+    inline_keyboard: [
+      [{ text: "❌ Отмена", callback_data: callbackData }]
+    ]
+  };
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function normalizeActionText(value) {
+  return String(value || '')
+    // NFC preserves the ℹ symbol; NFKC compatibility-normalizes it to "i".
+    .normalize('NFC')
+    .replace(TELEGRAM_FORMAT_CHARS_RE, '')
+    .replace(/\s+/gu, ' ')
+    .trim();
+}
+
+function isInstructionRequest(value) {
+  const normalized = normalizeActionText(value);
+  return /^(?:(?:ℹ|📖)\s*)?(?:инструкция(?:\s+контрол[её]ра)?|справка)$/iu.test(normalized) ||
+    /^\/(?:help|instruction|help_admin)(?:@[A-Za-z0-9_]+)?$/iu.test(normalized);
+}
+
+function normalizePromoCode(value) {
+  return normalizeActionText(value).replace(/\s+/gu, '').toUpperCase();
+}
+
+function parseDiscountPercent(value) {
+  const match = normalizeActionText(value).match(/^(\d+)\s*%?$/u);
+  if (!match) return null;
+
+  const discount = Number(match[1]);
+  return Number.isSafeInteger(discount) && discount >= 1 && discount <= 100
+    ? discount
+    : null;
+}
+
+function parsePromoLimit(value) {
+  const normalized = normalizeActionText(value);
+  if (!/^\d+$/.test(normalized)) return null;
+
+  const limit = Number(normalized);
+  return Number.isSafeInteger(limit) && limit >= 0 ? limit : null;
+}
+
+function promoWizardKey(chatId, userId) {
+  return `promo_wizard:${chatId}:${userId}`;
+}
+
+function promoCodeExists(promos, code) {
+  return Object.entries(promos || {}).some(([key, promo]) =>
+    normalizePromoCode((promo && promo.code) || key) === code
+  );
+}
+
+function isPromoManagementCallback(data) {
+  if (typeof data !== 'string') return false;
+
+  return data === 'refresh_promos' ||
+    data === 'promo_create_wizard' ||
+    data === PROMO_WIZARD_CANCEL_CALLBACK_PREFIX ||
+    data.startsWith(`${PROMO_WIZARD_CANCEL_CALLBACK_PREFIX}:`) ||
+    data.startsWith('gen_promo_') ||
+    data.startsWith('edit_promo_') ||
+    data.startsWith('set_disc_') ||
+    data.startsWith('set_limit_') ||
+    data.startsWith('del_promo_') ||
+    data.startsWith('confirm_del_');
+}
 
 const ADMIN_KEYBOARD = {
   keyboard: [
@@ -112,7 +233,250 @@ async function getPromos() {
 }
 
 async function savePromos(promos) {
-  await kv.set('promos', promos);
+  const saved = await kv.set('promos', promos);
+  if (!saved) {
+    throw new Error('Failed to persist promo codes in KV');
+  }
+}
+
+async function setPromoWizard(chatId, userId, wizard) {
+  const now = Date.now();
+  const saved = await kv.set(promoWizardKey(chatId, userId), {
+    ...wizard,
+    startedAt: wizard.startedAt || now,
+    expiresAt: now + PROMO_WIZARD_TTL_MS
+  });
+  if (!saved) {
+    throw new Error('Failed to persist promo creation state in KV');
+  }
+}
+
+async function getPromoWizard(chatId, userId) {
+  const wizard = await kv.get(promoWizardKey(chatId, userId));
+  if (!wizard || typeof wizard !== 'object' || !wizard.step) return null;
+
+  if (wizard.expiresAt && wizard.expiresAt <= Date.now()) {
+    await clearPromoWizard(chatId, userId);
+    return null;
+  }
+
+  return wizard;
+}
+
+async function clearPromoWizard(chatId, userId) {
+  await kv.set(promoWizardKey(chatId, userId), null);
+}
+
+async function clearStoredUserStep(chatId) {
+  const user = await kv.get(`user:${chatId}`);
+  if (!user || typeof user !== 'object' || !Object.prototype.hasOwnProperty.call(user, 'step')) {
+    return;
+  }
+
+  const updatedUser = { ...user };
+  delete updatedUser.step;
+  await kv.set(`user:${chatId}`, updatedUser);
+}
+
+async function clearConversationState(chatId, userId) {
+  await clearPromoWizard(chatId, userId);
+
+  // Legacy ticket state is keyed only by chat id. Touch it only in a private
+  // chat, otherwise one admin could reset another member's flow in a group.
+  if (String(chatId) === String(userId)) {
+    await clearStoredUserStep(chatId);
+  }
+}
+
+async function sendPromoWizardPrompt(chatId, text, sessionId) {
+  return callTelegram('sendMessage', {
+    chat_id: chatId,
+    parse_mode: 'HTML',
+    text,
+    reply_markup: promoWizardCancelKeyboard(sessionId)
+  });
+}
+
+async function handlePromoWizardMessage({ chatId, from, text, wizard }) {
+  const actorId = from ? from.id : chatId;
+  const normalizedText = normalizeActionText(text);
+
+  if (/^\/cancel(?:@[A-Za-z0-9_]+)?$/iu.test(normalizedText)) {
+    await clearPromoWizard(chatId, actorId);
+    await callTelegram('sendMessage', {
+      chat_id: chatId,
+      parse_mode: 'HTML',
+      text: `❌ <b>Создание промокода отменено.</b>`,
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🔙 Назад к промокодам", callback_data: "refresh_promos" }]
+        ]
+      }
+    });
+    return;
+  }
+
+  if (wizard.step === PROMO_CREATION_STATES.CODE) {
+    const code = normalizePromoCode(text);
+
+    if (!/^[A-Z0-9_-]{1,32}$/.test(code)) {
+      await sendPromoWizardPrompt(
+        chatId,
+        `⚠️ <b>Некорректный код.</b>\n\n` +
+        `Используйте от 1 до 32 латинских букв, цифр, дефисов или подчёркиваний.\n` +
+        `Например: <code>SALE20</code>`,
+        wizard.sessionId
+      );
+      return;
+    }
+
+    const promos = await getPromos();
+    if (promoCodeExists(promos, code)) {
+      await sendPromoWizardPrompt(
+        chatId,
+        `⚠️ Промокод <code>${escapeHtml(code)}</code> уже существует.\n\n` +
+        `Введите другой код:`,
+        wizard.sessionId
+      );
+      return;
+    }
+
+    await setPromoWizard(chatId, actorId, {
+      ...wizard,
+      step: PROMO_CREATION_STATES.DISCOUNT,
+      code
+    });
+    await sendPromoWizardPrompt(
+      chatId,
+      `➕ <b>СОЗДАНИЕ ПРОМОКОДА — ШАГ 2/4</b>\n\n` +
+      `🔑 Код: <code>${escapeHtml(code)}</code>\n\n` +
+      `Введите процент скидки от <b>1</b> до <b>100</b>.\n` +
+      `Можно указать со знаком процента, например: <code>20%</code>`,
+      wizard.sessionId
+    );
+    return;
+  }
+
+  if (wizard.step === PROMO_CREATION_STATES.DISCOUNT) {
+    const discountValue = parseDiscountPercent(text);
+
+    if (discountValue === null) {
+      await sendPromoWizardPrompt(
+        chatId,
+        `⚠️ <b>Введите целое число от 1 до 100.</b>\n\n` +
+        `Например: <code>20</code> или <code>20%</code>`,
+        wizard.sessionId
+      );
+      return;
+    }
+
+    await setPromoWizard(chatId, actorId, {
+      ...wizard,
+      step: PROMO_CREATION_STATES.LIMIT,
+      discountValue
+    });
+    await sendPromoWizardPrompt(
+      chatId,
+      `➕ <b>СОЗДАНИЕ ПРОМОКОДА — ШАГ 3/4</b>\n\n` +
+      `🔑 Код: <code>${escapeHtml(wizard.code)}</code>\n` +
+      `🏷 Скидка: <b>${discountValue}%</b>\n\n` +
+      `Введите максимальное количество активаций.\n` +
+      `Укажите целое число от <b>1</b> или <b>0</b> для безлимитного промокода.`,
+      wizard.sessionId
+    );
+    return;
+  }
+
+  if (wizard.step === PROMO_CREATION_STATES.LIMIT) {
+    const maxUses = parsePromoLimit(text);
+
+    if (maxUses === null) {
+      await sendPromoWizardPrompt(
+        chatId,
+        `⚠️ <b>Введите целое неотрицательное число.</b>\n\n` +
+        `Например: <code>50</code> или <code>0</code> для безлимита.`,
+        wizard.sessionId
+      );
+      return;
+    }
+
+    // Re-read immediately before saving: another admin may have created the
+    // same code while this wizard was in progress.
+    const promos = await getPromos();
+    if (promoCodeExists(promos, wizard.code)) {
+      await setPromoWizard(chatId, actorId, {
+        step: PROMO_CREATION_STATES.CODE,
+        sessionId: wizard.sessionId,
+        sourceMessageId: wizard.sourceMessageId,
+        startedAt: wizard.startedAt
+      });
+      await sendPromoWizardPrompt(
+        chatId,
+        `⚠️ Промокод <code>${escapeHtml(wizard.code)}</code> уже был создан другим администратором.\n\n` +
+        `Введите другой код:`,
+        wizard.sessionId
+      );
+      return;
+    }
+
+    const creator = from && from.username
+      ? `@${from.username}`
+      : ((from && from.first_name) || String(actorId));
+    const createdPromo = {
+      code: wizard.code,
+      discountType: 'percent',
+      discountValue: wizard.discountValue,
+      maxUses,
+      usedCount: 0,
+      createdBy: creator,
+      createdAt: new Date().toISOString()
+    };
+
+    promos[wizard.code] = createdPromo;
+    try {
+      await savePromos(promos);
+    } catch (saveError) {
+      console.error('Promo wizard save error:', saveError);
+      await sendPromoWizardPrompt(
+        chatId,
+        `⚠️ <b>Не удалось сохранить промокод в базе.</b>\n\n` +
+        `Сценарий не сброшен. Проверьте подключение к KV и отправьте лимит ещё раз.`,
+        wizard.sessionId
+      );
+      return;
+    }
+    await clearPromoWizard(chatId, actorId);
+
+    const limitLabel = maxUses === 0 ? 'Безлимит' : `${maxUses}`;
+    await callTelegram('sendMessage', {
+      chat_id: chatId,
+      parse_mode: 'HTML',
+      text: `✅ <b>ШАГ 4/4 — ПРОМОКОД СОЗДАН</b>\n\n` +
+        `🔑 <b>Код:</b> <code>${escapeHtml(createdPromo.code)}</code>\n` +
+        `🏷 <b>Скидка:</b> ${createdPromo.discountValue}%\n` +
+        `🔢 <b>Лимит активаций:</b> ${limitLabel}\n` +
+        `📊 <b>Использовано:</b> 0\n` +
+        `👤 <b>Создал:</b> ${escapeHtml(createdPromo.createdBy)}`,
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🔙 Назад к промокодам", callback_data: "refresh_promos" }]
+        ]
+      }
+    });
+    return;
+  }
+
+  await clearPromoWizard(chatId, actorId);
+  await callTelegram('sendMessage', {
+    chat_id: chatId,
+    parse_mode: 'HTML',
+    text: `⚠️ Сценарий создания промокода устарел. Откройте список и начните заново.`,
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🔙 Назад к промокодам", callback_data: "refresh_promos" }]
+      ]
+    }
+  });
 }
 
 function calculateDiscount(basePrice, promo) {
@@ -144,25 +508,33 @@ async function renderPromoList(chatId, messageId = null) {
 
   if (promoList.length === 0) {
     text += `<i>Промокоды пока не созданы.</i>\n\n` +
-      `Вы можете создать новый промокод в 1 клик через кнопку <b>«➕ Создать промокод»</b> ниже или командой:\n` +
-      `<code>/add_promo VIP 100%</code>`;
+      `Нажмите <b>«➕ Создать промокод»</b> и пройдите пошаговый диалог.`;
   } else {
     text += `📊 <b>Активные промокоды (${promoList.length}):</b>\n\n`;
     promoList.forEach((p, idx) => {
+      const code = String(p.code || 'UNKNOWN');
       const discStr = p.discountType === 'percent' ? `${p.discountValue}%` : `${p.discountValue.toLocaleString()} UZS`;
       const limitStr = p.maxUses > 0 ? `${p.usedCount || 0}/${p.maxUses}` : `${p.usedCount || 0} (безлимит)`;
-      const deepLink = `https://t.me/${botUsername}?start=promo_${p.code}`;
+      const deepLink = `https://t.me/${botUsername}?start=promo_${encodeURIComponent(code)}`;
 
-      text += `${idx + 1}. 🔑 <b><code>${p.code}</code></b> — Скидка: <b>${discStr}</b>\n` +
-        `   📊 Использовано: ${limitStr} | Создал: ${p.createdBy || 'Admin'}\n` +
-        `   🔗 <code>${deepLink}</code>\n\n`;
+      text += `${idx + 1}. 🔑 <b><code>${escapeHtml(code)}</code></b> — Скидка: <b>${escapeHtml(discStr)}</b>\n` +
+        `   📊 Использовано: ${escapeHtml(limitStr)} | Создал: ${escapeHtml(p.createdBy || 'Admin')}\n` +
+        `   🔗 <code>${escapeHtml(deepLink)}</code>\n\n`;
 
       inline_keyboard.push([
-        { text: `✏️ Изменить ${p.code}`, callback_data: `edit_promo_${p.code}` },
-        { text: `🗑 Удалить`, callback_data: `del_promo_${p.code}` }
+        { text: `✏️ Изменить ${code}`, callback_data: `edit_promo_${code}` },
+        { text: `🗑 Удалить`, callback_data: `del_promo_${code}` }
       ]);
     });
   }
+
+  const refreshedAt = new Intl.DateTimeFormat('ru-RU', {
+    timeZone: 'Asia/Tashkent',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }).format(new Date());
+  text += `\n\n🕒 <i>Обновлено: ${refreshedAt}</i>`;
 
   inline_keyboard.push([
     { text: "➕ Создать промокод", callback_data: "promo_create_wizard" },
@@ -397,7 +769,17 @@ async function callTelegram(method, body) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
-    return response.json();
+    const result = await response.json();
+
+    if (!response.ok || !result.ok) {
+      const description = result && result.description ? result.description : `HTTP ${response.status}`;
+      const isUnchangedMessage = method === 'editMessageText' && /message is not modified/i.test(description);
+      if (!isUnchangedMessage) {
+        console.error(`Telegram API Error (${method}): ${description}`);
+      }
+    }
+
+    return result;
   } catch (err) {
     console.error(`Telegram API Call Error (${method}):`, err);
     return null;
@@ -553,13 +935,17 @@ export default async function handler(req, res) {
       await trackUser(chatId);
 
       // === GLOBAL INSTRUCTION & HELP COMMAND (Universal for all roles) ===
-      if (text && (text.includes('Инструкция') || text.includes('инструкция') || text === '/help' || text === '/instruction' || text === '/help_admin' || text === 'Справка')) {
+      // This branch intentionally precedes every command/state branch: it is
+      // the raw-webhook equivalent of an FSM handler registered with state="*".
+      if (text && isInstructionRequest(text)) {
+        await clearConversationState(chatId, from ? from.id : chatId);
+
         if (await isSuperAdmin(from, chatId)) {
           const scannerAppUrl = `${PUBLIC_DOMAIN}/scanner`;
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `⚡️ <b>TEDxSergeli SUPER ADMIN DASHBOARD & ИНСТРУКЦИЯ</b>\n\n` +
+            text: `⚡️ <b>TEDxSergeli SUPER ADMIN DASHBOARD &amp; ИНСТРУКЦИЯ</b>\n\n` +
               `📱 <b>Входной контроль по QR-кодам:</b>\n` +
               `Нажмите кнопку ниже, чтобы открыть веб-сканер билетов прямо в Telegram!\n\n` +
               `👑 <b>Управление Администраторами:</b>\n` +
@@ -567,10 +953,10 @@ export default async function handler(req, res) {
               `• <code>/del_admin @username</code> — Снять Со-Администратора\n` +
               `• <code>/admins</code> — Список всех Администраторов (кнопка <b>👑 Админы</b>)\n\n` +
               `🏷 <b>Система Промокодов:</b>\n` +
-              `• Нажмите кнопку <b>🏷 Промокоды</b> или <code>/promos</code> — Интерактивное меню (Создание, Редактирование, Удаление в 1 клик)\n` +
-              `• <code>/add_promo <КОД> <СКИДКА> [ЛИМИТ]</code> — Быстрое создание\n` +
-              `• <code>/edit_promo <КОД> <СКИДКА> [ЛИМИТ]</code> — Редактирование промокода\n` +
-              `• <code>/del_promo <КОД></code> — Удаление промокода\n\n` +
+              `• Нажмите кнопку <b>🏷 Промокоды</b> или <code>/promos</code> — Интерактивное меню с пошаговым созданием\n` +
+              `• <code>/add_promo</code> — Начать пошаговое создание\n` +
+              `• <code>/edit_promo &lt;КОД&gt; &lt;СКИДКА&gt; [&lt;ЛИМИТ&gt;]</code> — Редактирование промокода\n` +
+              `• <code>/del_promo &lt;КОД&gt;</code> — Удаление промокода\n\n` +
               `🎫 <b>Управление Контролерами Билетов:</b>\n` +
               `• <code>/add_scanner @username</code> — Назначить волонтера-контролера\n` +
               `• <code>/del_scanner @username</code> — Удалить контролера\n` +
@@ -625,6 +1011,34 @@ export default async function handler(req, res) {
           });
           return res.status(200).json({ ok: true });
         }
+      }
+
+      // Promo creation messages take precedence over regular admin commands
+      // and the legacy ticket form, while the global instruction handler above
+      // can still interrupt and clear this state from any step.
+      const actorId = from ? from.id : chatId;
+      const promoWizard = await getPromoWizard(chatId, actorId);
+      if (promoWizard) {
+        if (!(await isSuperAdmin(from, chatId))) {
+          await clearPromoWizard(chatId, actorId);
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            text: '⛔️ Создавать промокоды могут только администраторы.'
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        if (!text) {
+          await sendPromoWizardPrompt(
+            chatId,
+            `⚠️ На этом шаге нужно отправить значение <b>текстовым сообщением</b>.`,
+            promoWizard.sessionId
+          );
+          return res.status(200).json({ ok: true });
+        }
+
+        await handlePromoWizardMessage({ chatId, from, text, wizard: promoWizard });
+        return res.status(200).json({ ok: true });
       }
 
       // === SUPER ADMIN COMMAND ENGINE ===
@@ -697,7 +1111,7 @@ export default async function handler(req, res) {
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `⚡️ <b>TEDxSergeli SUPER ADMIN DASHBOARD & QR-СКАНЕР</b>\n\n` +
+            text: `⚡️ <b>TEDxSergeli SUPER ADMIN DASHBOARD &amp; QR-СКАНЕР</b>\n\n` +
               `📱 <b>Входной контроль по QR-кодам:</b>\n` +
               `Нажмите кнопку ниже, чтобы открыть веб-сканер билетов прямо в Telegram!\n\n` +
               `👑 <b>Управление Администраторами:</b>\n` +
@@ -706,9 +1120,9 @@ export default async function handler(req, res) {
               `• <code>/admins</code> — Список всех Администраторов (кнопка <b>👑 Админы</b>)\n\n` +
               `🏷 <b>Система Промокодов:</b>\n` +
               `• Нажмите кнопку <b>🏷 Промокоды</b> или <code>/promos</code> — Интерактивное меню управления\n` +
-              `• <code>/add_promo <КОД> <СКИДКА> [ЛИМИТ]</code> — Создать промокод\n` +
-              `• <code>/edit_promo <КОД> <СКИДКА> [ЛИМИТ]</code> — Редактировать промокод\n` +
-              `• <code>/del_promo <КОД></code> — Удалить промокод\n\n` +
+              `• <code>/add_promo</code> — Начать пошаговое создание\n` +
+              `• <code>/edit_promo &lt;КОД&gt; &lt;СКИДКА&gt; [&lt;ЛИМИТ&gt;]</code> — Редактировать промокод\n` +
+              `• <code>/del_promo &lt;КОД&gt;</code> — Удалить промокод\n\n` +
               `🎫 <b>Управление Контролерами Билетов:</b>\n` +
               `• <code>/add_scanner @username</code> — Назначить волонтера-контролера\n` +
               `• <code>/del_scanner @username</code> — Удалить контролера\n` +
@@ -734,54 +1148,18 @@ export default async function handler(req, res) {
           return res.status(200).json({ ok: true });
         }
 
-        // Create / Add Promo Code Command (/add_promo <КОД> <СКИДКА> [ЛИМИТ])
-        if (text.startsWith('/add_promo')) {
-          const match = text.trim().match(/^\/add_promo\s+([A-Za-z0-9_-]+)\s+(\d+%?|\d+k?|\d+)(?:\s+(\d+))?$/i);
-          if (!match) {
-            await callTelegram('sendMessage', {
-              chat_id: chatId,
-              parse_mode: 'HTML',
-              text: `⚠️ <b>Неверный формат команды!</b>\n\n` +
-                `Формат: <code>/add_promo <КОД> <СКИДКА> [ЛИМИТ]</code>\n\n` +
-                `Примеры:\n` +
-                `• <code>/add_promo VIP 100%</code> — Бесплатный билет\n` +
-                `• <code>/add_promo SALE20 20% 50</code> — 20% скидка для 50 человек\n` +
-                `• <code>/add_promo SAVE10K 10000 100</code> — Скидка 10,000 UZS для 100 человек`,
-              reply_markup: ADMIN_KEYBOARD
-            });
-            return res.status(200).json({ ok: true });
+        // /add_promo is now an entry point into the same step-by-step wizard.
+        if (/^\/add_promo(?:@[A-Za-z0-9_]+)?(?:\s|$)/iu.test(normalizeActionText(text))) {
+          if (String(chatId) === String(actorId)) {
+            await clearStoredUserStep(chatId);
           }
-
-          const code = match[1].toUpperCase();
-          const discountRaw = match[2];
-          const limitRaw = parseInt(match[3] || '0', 10) || 0;
-
-          let discountType = 'fixed';
-          let discountValue = 0;
-
-          if (discountRaw.endsWith('%')) {
-            discountType = 'percent';
-            discountValue = Math.min(100, Math.max(1, parseInt(discountRaw.replace('%', ''), 10) || 0));
-          } else {
-            discountType = 'fixed';
-            discountValue = Math.max(1, parseInt(discountRaw.replace(/\D/g, ''), 10) || 0);
-          }
-
-          const promos = await getPromos();
-          const creator = from.username ? `@${from.username}` : (from.first_name || String(from.id));
-
-          promos[code] = {
-            code,
-            discountType,
-            discountValue,
-            maxUses: limitRaw,
-            usedCount: promos[code]?.usedCount || 0,
-            createdBy: creator,
-            createdAt: new Date().toISOString()
-          };
-
-          await savePromos(promos);
-          await renderPromoList(chatId);
+          const sessionId = createPromoWizardSessionId();
+          await setPromoWizard(chatId, actorId, {
+            step: PROMO_CREATION_STATES.CODE,
+            sessionId,
+            sourceMessageId: null
+          });
+          await sendPromoWizardPrompt(chatId, PROMO_WIZARD_CODE_PROMPT, sessionId);
           return res.status(200).json({ ok: true });
         }
 
@@ -797,7 +1175,7 @@ export default async function handler(req, res) {
             await callTelegram('sendMessage', {
               chat_id: chatId,
               parse_mode: 'HTML',
-              text: `⚠️ <b>Использование:</b> <code>/edit_promo <КОД> <СКИДКА> [ЛИМИТ]</code>\n\nПример: <code>/edit_promo VIP 100% 20</code>`,
+              text: `⚠️ <b>Использование:</b> <code>/edit_promo &lt;КОД&gt; &lt;СКИДКА&gt; [&lt;ЛИМИТ&gt;]</code>\n\nПример: <code>/edit_promo VIP 100% 20</code>`,
               reply_markup: ADMIN_KEYBOARD
             });
             return res.status(200).json({ ok: true });
@@ -1004,7 +1382,7 @@ export default async function handler(req, res) {
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
-            text: `📊 <b>TEDxSergeli LIVE MONITORING & STATISTIKA:</b>\n\n` +
+            text: `📊 <b>TEDxSergeli LIVE MONITORING &amp; STATISTIKA:</b>\n\n` +
               `👥 <b>Botdagi foydalanuvchilar:</b> ${allUserIds.length} ta\n` +
               `🎟 <b>Sotilgan chiptalar:</b> ${displaySold} / 100\n` +
               `⏳ <b>Vaqtincha band qilingan joylar:</b> ${occupiedSeats.length}\n\n` +
@@ -1871,7 +2249,7 @@ export default async function handler(req, res) {
 
     // Handle Inline Button Clicks (Callback Queries)
     if (update.callback_query) {
-      const { id, data, message, from } = update.callback_query;
+      const { id, data = '', message, from } = update.callback_query;
       const adminUsername = from.username || from.first_name || 'Admin';
       const chatId = (message && message.chat) ? message.chat.id : from.id;
 
@@ -1946,92 +2324,82 @@ export default async function handler(req, res) {
       }
 
       // Handle Promo Code Management Callbacks
-      if (data === 'refresh_promos') {
-        await renderPromoList(chatId, message.message_id);
-        await callTelegram('answerCallbackQuery', { callback_query_id: id });
-        return res.status(200).json({ ok: true });
-      }
-
-      if (data === 'promo_create_wizard') {
-        const text = `➕ <b>СОЗДАНИЕ НОВОГО ПРОМОКОДА</b>\n\n` +
-          `Выберите готовый шаблон для создания в 1 клик или отправьте команду вручную:\n\n` +
-          `<b>Быстрые шаблоны:</b>\n` +
-          `• <b>VIP 100%</b> — Бесплатный VIP билет (код VIP100)\n` +
-          `• <b>20% Скидка</b> — Скидка 20% для первых 50 чел. (код SALE20)\n` +
-          `• <b>10,000 UZS</b> — Скидка 10,000 UZS для 100 чел. (код SAVE10K)\n` +
-          `• <b>100% Одноразовый</b> — Случайный 100% код на 1 использование\n\n` +
-          `<b>Формат создания вручную:</b>\n` +
-          `<code>/add_promo <КОД> <СКИДКА> [ЛИМИТ]</code>`;
-
-        await callTelegram('editMessageText', {
-          chat_id: chatId,
-          message_id: message.message_id,
-          parse_mode: 'HTML',
-          text,
-          reply_markup: {
-            inline_keyboard: [
-              [
-                { text: "🎟 VIP 100% (VIP100)", callback_data: "gen_promo_vip" },
-                { text: "🏷 20% Скидка (SALE20)", callback_data: "gen_promo_20" }
-              ],
-              [
-                { text: "💰 10,000 UZS (SAVE10K)", callback_data: "gen_promo_10k" },
-                { text: "🎲 100% Одноразовый", callback_data: "gen_promo_rand" }
-              ],
-              [
-                { text: "🔙 Назад в список", callback_data: "refresh_promos" }
-              ]
-            ]
-          }
+      if (isPromoManagementCallback(data) && !(await isSuperAdmin(from, chatId))) {
+        await callTelegram('answerCallbackQuery', {
+          callback_query_id: id,
+          text: '⛔️ Управление промокодами доступно только администраторам.',
+          show_alert: true
         });
-        await callTelegram('answerCallbackQuery', { callback_query_id: id });
         return res.status(200).json({ ok: true });
       }
 
-      if (data.startsWith('gen_promo_')) {
-        const type = data.replace('gen_promo_', '');
-        const promos = await getPromos();
-        const creator = from.username ? `@${from.username}` : (from.first_name || String(from.id));
-        let code = '';
-        let discountType = 'percent';
-        let discountValue = 100;
-        let maxUses = 0;
+      if (data === 'refresh_promos') {
+        await callTelegram('answerCallbackQuery', {
+          callback_query_id: id,
+          text: '🔄 Обновляю список…'
+        });
+        await clearPromoWizard(chatId, from.id);
+        await renderPromoList(chatId, message ? message.message_id : null);
+        return res.status(200).json({ ok: true });
+      }
 
-        if (type === 'vip') {
-          code = 'VIP100';
-          discountType = 'percent';
-          discountValue = 100;
-          maxUses = 0;
-        } else if (type === '20') {
-          code = 'SALE20';
-          discountType = 'percent';
-          discountValue = 20;
-          maxUses = 50;
-        } else if (type === '10k') {
-          code = 'SAVE10K';
-          discountType = 'fixed';
-          discountValue = 10000;
-          maxUses = 100;
-        } else if (type === 'rand') {
-          code = `FREE${Math.floor(1000 + Math.random() * 9000)}`;
-          discountType = 'percent';
-          discountValue = 100;
-          maxUses = 1;
+      if (data === PROMO_WIZARD_CANCEL_CALLBACK_PREFIX || data.startsWith(`${PROMO_WIZARD_CANCEL_CALLBACK_PREFIX}:`)) {
+        const callbackSessionId = data.startsWith(`${PROMO_WIZARD_CANCEL_CALLBACK_PREFIX}:`)
+          ? data.slice(PROMO_WIZARD_CANCEL_CALLBACK_PREFIX.length + 1)
+          : null;
+        const activeWizard = await getPromoWizard(chatId, from.id);
+        const isCurrentSession = activeWizard && (
+          callbackSessionId
+            ? activeWizard.sessionId === callbackSessionId
+            : !activeWizard.sessionId
+        );
+
+        if (!isCurrentSession) {
+          await callTelegram('answerCallbackQuery', {
+            callback_query_id: id,
+            text: 'ℹ️ Эта форма уже неактуальна.'
+          });
+          return res.status(200).json({ ok: true });
         }
 
-        promos[code] = {
-          code,
-          discountType,
-          discountValue,
-          maxUses,
-          usedCount: promos[code]?.usedCount || 0,
-          createdBy: creator,
-          createdAt: new Date().toISOString()
-        };
+        await callTelegram('answerCallbackQuery', {
+          callback_query_id: id,
+          text: '❌ Создание отменено'
+        });
+        await clearPromoWizard(chatId, from.id);
+        await renderPromoList(chatId, message ? message.message_id : null);
+        return res.status(200).json({ ok: true });
+      }
 
-        await savePromos(promos);
-        await callTelegram('answerCallbackQuery', { callback_query_id: id, text: `✅ Промокод ${code} создан!` });
-        await renderPromoList(chatId, message.message_id);
+      // Legacy template callbacks are also routed into the wizard so every
+      // promo creation path now follows the same validated conversation.
+      if (data === 'promo_create_wizard' || data.startsWith('gen_promo_')) {
+        await callTelegram('answerCallbackQuery', {
+          callback_query_id: id,
+          text: '➕ Начинаем создание промокода'
+        });
+
+        if (String(chatId) === String(from.id)) {
+          await clearStoredUserStep(chatId);
+        }
+        const sessionId = createPromoWizardSessionId();
+        await setPromoWizard(chatId, from.id, {
+          step: PROMO_CREATION_STATES.CODE,
+          sessionId,
+          sourceMessageId: message ? message.message_id : null
+        });
+
+        if (message && message.message_id) {
+          await callTelegram('editMessageText', {
+            chat_id: chatId,
+            message_id: message.message_id,
+            parse_mode: 'HTML',
+            text: PROMO_WIZARD_CODE_PROMPT,
+            reply_markup: promoWizardCancelKeyboard(sessionId)
+          });
+        } else {
+          await sendPromoWizardPrompt(chatId, PROMO_WIZARD_CODE_PROMPT, sessionId);
+        }
         return res.status(200).json({ ok: true });
       }
 
@@ -2049,11 +2417,11 @@ export default async function handler(req, res) {
         const discStr = p.discountType === 'percent' ? `${p.discountValue}%` : `${p.discountValue.toLocaleString()} UZS`;
         const limitStr = p.maxUses > 0 ? `${p.maxUses} чел.` : 'Безлимитный';
 
-        const text = `✏️ <b>РЕДАКТИРОВАНИЕ ПРОМОКОДА: <code>${p.code}</code></b>\n\n` +
-          `🏷 <b>Текущая скидка:</b> <b>${discStr}</b>\n` +
-          `🔢 <b>Лимит использования:</b> <b>${limitStr}</b>\n` +
+        const text = `✏️ <b>РЕДАКТИРОВАНИЕ ПРОМОКОДА: <code>${escapeHtml(p.code)}</code></b>\n\n` +
+          `🏷 <b>Текущая скидка:</b> <b>${escapeHtml(discStr)}</b>\n` +
+          `🔢 <b>Лимит использования:</b> <b>${escapeHtml(limitStr)}</b>\n` +
           `📊 <b>Использовано:</b> <b>${p.usedCount || 0}</b>\n` +
-          `👤 <b>Создатель:</b> ${p.createdBy || 'Admin'}\n\n` +
+          `👤 <b>Создатель:</b> ${escapeHtml(p.createdBy || 'Admin')}\n\n` +
           `Выберите новое значение скидки или лимита в 1 клик:`;
 
         await callTelegram('editMessageText', {
@@ -2089,9 +2457,10 @@ export default async function handler(req, res) {
       }
 
       if (data.startsWith('set_disc_')) {
-        const parts = data.replace('set_disc_', '').split('_');
-        const code = parts[0];
-        const valType = parts[1];
+        const payload = data.replace('set_disc_', '');
+        const separatorIndex = payload.lastIndexOf('_');
+        const code = payload.slice(0, separatorIndex);
+        const valType = payload.slice(separatorIndex + 1);
 
         const promos = await getPromos();
         if (promos[code]) {
@@ -2104,6 +2473,14 @@ export default async function handler(req, res) {
           }
           await savePromos(promos);
           await callTelegram('answerCallbackQuery', { callback_query_id: id, text: `✅ Скидка для ${code} изменена!` });
+        } else {
+          await callTelegram('answerCallbackQuery', {
+            callback_query_id: id,
+            text: '❌ Промокод больше не существует.',
+            show_alert: true
+          });
+          await renderPromoList(chatId, message ? message.message_id : null);
+          return res.status(200).json({ ok: true });
         }
 
         const p = promos[code];
@@ -2115,11 +2492,11 @@ export default async function handler(req, res) {
             chat_id: chatId,
             message_id: message.message_id,
             parse_mode: 'HTML',
-            text: `✏️ <b>РЕДАКТИРОВАНИЕ ПРОМОКОДА: <code>${p.code}</code></b>\n\n` +
-              `🏷 <b>Текущая скидка:</b> <b>${discStr}</b>\n` +
-              `🔢 <b>Лимит использования:</b> <b>${limitStr}</b>\n` +
+            text: `✏️ <b>РЕДАКТИРОВАНИЕ ПРОМОКОДА: <code>${escapeHtml(p.code)}</code></b>\n\n` +
+              `🏷 <b>Текущая скидка:</b> <b>${escapeHtml(discStr)}</b>\n` +
+              `🔢 <b>Лимит использования:</b> <b>${escapeHtml(limitStr)}</b>\n` +
               `📊 <b>Использовано:</b> <b>${p.usedCount || 0}</b>\n` +
-              `👤 <b>Создатель:</b> ${p.createdBy || 'Admin'}\n\n` +
+              `👤 <b>Создатель:</b> ${escapeHtml(p.createdBy || 'Admin')}\n\n` +
               `✅ <i>Скидка успешно обновлена!</i>`,
             reply_markup: {
               inline_keyboard: [
@@ -2149,15 +2526,24 @@ export default async function handler(req, res) {
       }
 
       if (data.startsWith('set_limit_')) {
-        const parts = data.replace('set_limit_', '').split('_');
-        const code = parts[0];
-        const limitVal = parseInt(parts[1], 10) || 0;
+        const payload = data.replace('set_limit_', '');
+        const separatorIndex = payload.lastIndexOf('_');
+        const code = payload.slice(0, separatorIndex);
+        const limitVal = parseInt(payload.slice(separatorIndex + 1), 10) || 0;
 
         const promos = await getPromos();
         if (promos[code]) {
           promos[code].maxUses = limitVal;
           await savePromos(promos);
           await callTelegram('answerCallbackQuery', { callback_query_id: id, text: `✅ Лимит для ${code} изменен!` });
+        } else {
+          await callTelegram('answerCallbackQuery', {
+            callback_query_id: id,
+            text: '❌ Промокод больше не существует.',
+            show_alert: true
+          });
+          await renderPromoList(chatId, message ? message.message_id : null);
+          return res.status(200).json({ ok: true });
         }
 
         const p = promos[code];
@@ -2169,11 +2555,11 @@ export default async function handler(req, res) {
             chat_id: chatId,
             message_id: message.message_id,
             parse_mode: 'HTML',
-            text: `✏️ <b>РЕДАКТИРОВАНИЕ ПРОМОКОДА: <code>${p.code}</code></b>\n\n` +
-              `🏷 <b>Текущая скидка:</b> <b>${discStr}</b>\n` +
-              `🔢 <b>Лимит использования:</b> <b>${limitStr}</b>\n` +
+            text: `✏️ <b>РЕДАКТИРОВАНИЕ ПРОМОКОДА: <code>${escapeHtml(p.code)}</code></b>\n\n` +
+              `🏷 <b>Текущая скидка:</b> <b>${escapeHtml(discStr)}</b>\n` +
+              `🔢 <b>Лимит использования:</b> <b>${escapeHtml(limitStr)}</b>\n` +
               `📊 <b>Использовано:</b> <b>${p.usedCount || 0}</b>\n` +
-              `👤 <b>Создатель:</b> ${p.createdBy || 'Admin'}\n\n` +
+              `👤 <b>Создатель:</b> ${escapeHtml(p.createdBy || 'Admin')}\n\n` +
               `✅ <i>Лимит успешно обновлен!</i>`,
             reply_markup: {
               inline_keyboard: [
@@ -2208,7 +2594,7 @@ export default async function handler(req, res) {
           chat_id: chatId,
           message_id: message.message_id,
           parse_mode: 'HTML',
-          text: `⚠️ <b>ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ</b>\n\nВы действительно хотите удалить промокод <code>${code}</code>?`,
+          text: `⚠️ <b>ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ</b>\n\nВы действительно хотите удалить промокод <code>${escapeHtml(code)}</code>?`,
           reply_markup: {
             inline_keyboard: [
               [
@@ -2229,8 +2615,14 @@ export default async function handler(req, res) {
           delete promos[code];
           await savePromos(promos);
           await callTelegram('answerCallbackQuery', { callback_query_id: id, text: `🗑 Промокод ${code} удален` });
+        } else {
+          await callTelegram('answerCallbackQuery', {
+            callback_query_id: id,
+            text: '❌ Промокод уже удалён.',
+            show_alert: true
+          });
         }
-        await renderPromoList(chatId, message.message_id);
+        await renderPromoList(chatId, message ? message.message_id : null);
         return res.status(200).json({ ok: true });
       }
 
