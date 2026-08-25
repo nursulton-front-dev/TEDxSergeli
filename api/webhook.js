@@ -553,7 +553,7 @@ export default async function handler(req, res) {
       await trackUser(chatId);
 
       // === GLOBAL INSTRUCTION & HELP COMMAND (Universal for all roles) ===
-      if (text && (text === 'ℹ️ Инструкция' || text === '📖 Инструкция' || text === 'Инструкция' || text === '📖 Инструкция контролера' || text === '/help' || text === '/instruction' || text === '/help_admin' || text === 'Справка')) {
+      if (text && (text.includes('Инструкция') || text.includes('инструкция') || text === '/help' || text === '/instruction' || text === '/help_admin' || text === 'Справка')) {
         if (await isSuperAdmin(from, chatId)) {
           const scannerAppUrl = `${PUBLIC_DOMAIN}/scanner`;
           await callTelegram('sendMessage', {
@@ -831,7 +831,7 @@ export default async function handler(req, res) {
         }
 
         // List Promo Codes (/promos or 🏷 Промокоды)
-        if (text === '/promos' || text === '🏷 Промокоды') {
+        if (text === '/promos' || text.includes('Промокоды')) {
           await renderPromoList(chatId);
           return res.status(200).json({ ok: true });
         }
@@ -882,7 +882,7 @@ export default async function handler(req, res) {
         }
 
         // List Admins
-        if (text === '/admins' || text === '👑 Админы') {
+        if (text === '/admins' || text.includes('Админы')) {
           const extraAdmins = (await kv.get('super_admins')) || [];
           const listStr = extraAdmins.length > 0
             ? extraAdmins.map((a, i) => `${i + 1}. <code>${a}</code>`).join('\n')
@@ -944,7 +944,7 @@ export default async function handler(req, res) {
         }
 
         // List Scanners
-        if (text === '/scanners' || text === '📋 Контролеры') {
+        if (text === '/scanners' || text.includes('Контролеры')) {
           const scanners = (await kv.get('allowed_scanners')) || [];
           const listStr = scanners.length > 0
             ? scanners.map((s, i) => `${i + 1}. <code>${s}</code>`).join('\n')
@@ -960,7 +960,7 @@ export default async function handler(req, res) {
         }
 
         // Statistics & Live Monitoring (Idea 4)
-        if (text === '/stats' || text === '📊 Статистика' || text === '/live_stats') {
+        if (text === '/stats' || text.includes('Статистика') || text === '/live_stats') {
           const totalSold = parseInt((await kv.get('total_tickets_sold')) || 0, 10);
           const allocatedSeats = (await kv.get('allocated_seats')) || [];
           const allTicketIds = (await kv.get('all_ticket_ids')) || [];
