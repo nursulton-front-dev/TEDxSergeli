@@ -1014,18 +1014,55 @@ export default async function handler(req, res) {
           return res.status(200).json({ ok: true });
         }
 
-        // Broadcast (Idea 2)
-        if (text.startsWith('/broadcast')) {
-          const adminIdsEnv = process.env.ADMIN_IDS || SUPER_ADMIN_ID;
-          const adminIds = adminIdsEnv.split(',').map(id => id.trim());
-          if (!adminIds.includes(String(from.id))) {
+        // Reset Ticket Status back to VALID (e.g. after an accidental scan)
+        if (text.startsWith('/reset_ticket')) {
+          const tid = text.replace('/reset_ticket', '').trim().toUpperCase();
+          if (!tid) {
             await callTelegram('sendMessage', {
               chat_id: chatId,
-              text: "❌ У вас нет прав для рассылки."
+              parse_mode: 'HTML',
+              text: `⚠️ <b>Использование:</b> <code>/reset_ticket TEDX-849201</code>`,
+              reply_markup: ADMIN_KEYBOARD
             });
             return res.status(200).json({ ok: true });
           }
 
+          let resetTicket = await kv.get(`ticket:${tid}`);
+          if (!resetTicket) {
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `❌ Билет <code>${tid}</code> не найден.`,
+              reply_markup: ADMIN_KEYBOARD
+            });
+            return res.status(200).json({ ok: true });
+          }
+
+          resetTicket.status = 'valid';
+          resetTicket.is_checked_in = false;
+          delete resetTicket.used_at;
+          delete resetTicket.checkedInAt;
+          delete resetTicket.tashkentTime;
+          delete resetTicket.checkedInBy;
+          delete resetTicket.scanned_by;
+          await kv.set(`ticket:${tid}`, resetTicket);
+
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: `✅ <b>Статус билета сброшен на VALID!</b>\n\n` +
+              `🎟 <b>ID:</b> <code>${tid}</code>\n` +
+              `👤 <b>Гость:</b> ${resetTicket.name || 'Mehmon'}`,
+            reply_markup: ADMIN_KEYBOARD
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        // Broadcast (Idea 2)
+        if (text.startsWith('/broadcast')) {
+          // Already gated by isSuperAdmin() at the top of this command engine —
+          // no separate ADMIN_IDS check here, otherwise co-admins added via
+          // /add_admin (tracked in KV) would be wrongly denied broadcast rights.
           const broadcastMsg = text.replace('/broadcast', '').trim();
           const isReply = !!update.message.reply_to_message;
 
@@ -1374,8 +1411,42 @@ export default async function handler(req, res) {
           const { seatNumber, sector, row, seat, bookingExpiresAt } = parsed || {};
 
           if (seatNumber) {
+            const allocatedSeats = (await kv.get('allocated_seats')) || [];
             let activeOccupied = await getActiveOccupiedSeats();
-            activeOccupied = activeOccupied.filter(i => i.seat !== seatNumber);
+            const isOwnSeat = user.seatNumber === seatNumber;
+            const isTaken = !isOwnSeat && (
+              (Array.isArray(allocatedSeats) && allocatedSeats.includes(seatNumber)) ||
+              activeOccupied.some(i => i.seat === seatNumber)
+            );
+
+            if (isTaken) {
+              const userLang = user.lang || 'ru';
+              const takenMsg = userLang === 'uz'
+                ? `⚠️ <b>Kechirasiz, #${seatNumber} joyi band qilib bo'lingan.</b>\nIltimos, boshqa joy tanlang.`
+                : userLang === 'en'
+                  ? `⚠️ <b>Sorry, seat #${seatNumber} was just taken.</b>\nPlease pick another seat.`
+                  : `⚠️ <b>Извините, место №${seatNumber} уже занято.</b>\nПожалуйста, выберите другое место.`;
+
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                parse_mode: 'HTML',
+                text: takenMsg,
+                reply_markup: {
+                  inline_keyboard: [
+                    [
+                      {
+                        text: userLang === 'uz' ? "🔄 Joy tanlash" : userLang === 'en' ? "🔄 Pick a seat" : "🔄 Выбрать место",
+                        web_app: { url: `${PUBLIC_DOMAIN}/seat-picker` }
+                      }
+                    ]
+                  ]
+                }
+              });
+              return res.status(200).json({ ok: true });
+            }
+
+            // Release this user's previous hold (if any) and take the new seat
+            activeOccupied = activeOccupied.filter(i => i.seat !== seatNumber && i.seat !== user.seatNumber);
             activeOccupied.push({ seat: seatNumber, expiresAt: Date.now() + 15 * 60 * 1000 });
             await kv.set('occupied_seats', activeOccupied);
 

@@ -78,6 +78,30 @@ function getSeatDetails(seatNum) {
   return { seatNumber: n, sector, sectorName, row, seat, seatId: `SEAT-${n}` };
 }
 
+// Filters out expired/legacy-format holds and persists the cleanup, mirroring webhook.js
+async function getActiveOccupiedSeats() {
+  let occupied = (await kv.get('occupied_seats')) || [];
+  if (!Array.isArray(occupied)) occupied = [];
+  const now = Date.now();
+  let changed = false;
+  const active = [];
+  for (const item of occupied) {
+    if (item && typeof item === 'object' && item.seat && item.expiresAt) {
+      if (item.expiresAt > now) {
+        active.push(item);
+      } else {
+        changed = true;
+      }
+    } else {
+      changed = true;
+    }
+  }
+  if (changed) {
+    await kv.set('occupied_seats', active);
+  }
+  return active;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -94,18 +118,33 @@ export default async function handler(req, res) {
     }
 
     const sNum = parseInt(seatNumber, 10);
+    if (isNaN(sNum) || sNum < 1 || sNum > 100) {
+      return res.status(400).json({ ok: false, error: 'Invalid seat number' });
+    }
     const seatInfo = getSeatDetails(sNum);
 
-    // Update occupied seats list in Upstash Redis
-    let occupied = (await kv.get('occupied_seats')) || [];
-    if (!Array.isArray(occupied)) occupied = [];
-    if (!occupied.includes(sNum)) {
-      occupied.push(sNum);
-      await kv.set('occupied_seats', occupied, 900);
+    const existingUser = chatId ? (await kv.get(`user:${chatId}`)) || {} : {};
+    const heldByThisUser = existingUser.seatNumber === sNum;
+
+    const allocatedSeats = (await kv.get('allocated_seats')) || [];
+    let activeOccupied = await getActiveOccupiedSeats();
+
+    if (!heldByThisUser) {
+      if (Array.isArray(allocatedSeats) && allocatedSeats.includes(sNum)) {
+        return res.status(409).json({ ok: false, error: 'Seat already sold' });
+      }
+      if (activeOccupied.some((i) => i.seat === sNum)) {
+        return res.status(409).json({ ok: false, error: 'Seat already reserved by another guest' });
+      }
     }
 
+    // Release this user's previous hold (if any) and take the new one
+    activeOccupied = activeOccupied.filter((i) => i.seat !== sNum && i.seat !== existingUser.seatNumber);
+    activeOccupied.push({ seat: sNum, expiresAt: Date.now() + 15 * 60 * 1000 });
+    await kv.set('occupied_seats', activeOccupied);
+
     if (chatId) {
-      let user = (await kv.get(`user:${chatId}`)) || {};
+      let user = existingUser;
       user.chatId = chatId;
       user.seatNumber = sNum;
       user.seatId = seatInfo.seatId;
