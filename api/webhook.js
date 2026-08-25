@@ -117,7 +117,7 @@ async function savePromos(promos) {
 
 function calculateDiscount(basePrice, promo) {
   if (!promo) return { finalPrice: basePrice, discountAmount: 0, isValid: false, reason: 'not_found' };
-  
+
   if (promo.maxUses > 0 && promo.usedCount >= promo.maxUses) {
     return { finalPrice: basePrice, discountAmount: 0, isValid: false, reason: 'limit_exceeded' };
   }
@@ -638,7 +638,7 @@ export default async function handler(req, res) {
 
           const promos = await getPromos();
           const creator = from.username ? `@${from.username}` : (from.first_name || String(from.id));
-          
+
           promos[code] = {
             code,
             discountType,
@@ -1480,7 +1480,7 @@ export default async function handler(req, res) {
 
           const occupiedSeatNumbers = activeOccupied.map(i => i.seat);
           const allTaken = new Set([...occupiedSeatNumbers, ...allocatedSeats]);
-          
+
           let nextSeatNumber = 1;
           while (allTaken.has(nextSeatNumber) && nextSeatNumber <= 100) {
             nextSeatNumber++;
@@ -1509,7 +1509,7 @@ export default async function handler(req, res) {
                 // 100% Free Ticket
                 promo.usedCount = (promo.usedCount || 0) + 1;
                 await savePromos(promos);
-                
+
                 await issueTicketForUser({
                   userId: chatId,
                   user,
@@ -1565,9 +1565,9 @@ export default async function handler(req, res) {
           let errText = lang === 'uz'
             ? `❌ <b>Promo-kod topilmadi.</b> Qaytadan kiriting yoki <b>«➡️ O'tkazib yuborish»</b> tugmasini bosing.`
             : lang === 'en'
-            ? `❌ <b>Promo code not found.</b> Try again or tap <b>«➡️ Skip»</b>.`
-            : `❌ <b>Промокод не найден.</b> Попробуйте еще раз или нажмите <b>«➡️ Пропустить»</b>.`;
-          
+              ? `❌ <b>Promo code not found.</b> Try again or tap <b>«➡️ Skip»</b>.`
+              : `❌ <b>Промокод не найден.</b> Попробуйте еще раз или нажмите <b>«➡️ Пропустить»</b>.`;
+
           await callTelegram('sendMessage', {
             chat_id: chatId,
             parse_mode: 'HTML',
