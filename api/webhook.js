@@ -568,9 +568,9 @@ export default async function handler(req, res) {
               `• <code>/admins</code> — Список всех Администраторов (кнопка <b>👑 Админы</b>)\n\n` +
               `🏷 <b>Система Промокодов:</b>\n` +
               `• Нажмите кнопку <b>🏷 Промокоды</b> или <code>/promos</code> — Интерактивное меню (Создание, Редактирование, Удаление в 1 клик)\n` +
-              `• <code>/add_promo &lt;КОД&gt; &lt;СКИДКА&gt; [ЛИМИТ]</code> — Быстрое создание\n` +
-              `• <code>/edit_promo &lt;КОД&gt; &lt;СКИДКА&gt; [ЛИМИТ]</code> — Редактирование промокода\n` +
-              `• <code>/del_promo &lt;КОД&gt;</code> — Удаление промокода\n\n` +
+              `• <code>/add_promo <КОД> <СКИДКА> [ЛИМИТ]</code> — Быстрое создание\n` +
+              `• <code>/edit_promo <КОД> <СКИДКА> [ЛИМИТ]</code> — Редактирование промокода\n` +
+              `• <code>/del_promo <КОД></code> — Удаление промокода\n\n` +
               `🎫 <b>Управление Контролерами Билетов:</b>\n` +
               `• <code>/add_scanner @username</code> — Назначить волонтера-контролера\n` +
               `• <code>/del_scanner @username</code> — Удалить контролера\n` +
@@ -706,9 +706,9 @@ export default async function handler(req, res) {
               `• <code>/admins</code> — Список всех Администраторов (кнопка <b>👑 Админы</b>)\n\n` +
               `🏷 <b>Система Промокодов:</b>\n` +
               `• Нажмите кнопку <b>🏷 Промокоды</b> или <code>/promos</code> — Интерактивное меню управления\n` +
-              `• <code>/add_promo &lt;КОД&gt; &lt;СКИДКА&gt; [ЛИМИТ]</code> — Создать промокод\n` +
-              `• <code>/edit_promo &lt;КОД&gt; &lt;СКИДКА&gt; [ЛИМИТ]</code> — Редактировать промокод\n` +
-              `• <code>/del_promo &lt;КОД&gt;</code> — Удалить промокод\n\n` +
+              `• <code>/add_promo <КОД> <СКИДКА> [ЛИМИТ]</code> — Создать промокод\n` +
+              `• <code>/edit_promo <КОД> <СКИДКА> [ЛИМИТ]</code> — Редактировать промокод\n` +
+              `• <code>/del_promo <КОД></code> — Удалить промокод\n\n` +
               `🎫 <b>Управление Контролерами Билетов:</b>\n` +
               `• <code>/add_scanner @username</code> — Назначить волонтера-контролера\n` +
               `• <code>/del_scanner @username</code> — Удалить контролера\n` +
@@ -787,7 +787,7 @@ export default async function handler(req, res) {
             await callTelegram('sendMessage', {
               chat_id: chatId,
               parse_mode: 'HTML',
-              text: `⚠️ <b>Использование:</b> <code>/edit_promo &lt;КОД&gt; &lt;СКИДКА&gt; [ЛИМИТ]</code>\n\nПример: <code>/edit_promo VIP 100% 20</code>`,
+              text: `⚠️ <b>Использование:</b> <code>/edit_promo <КОД> <СКИДКА> [ЛИМИТ]</code>\n\nПример: <code>/edit_promo VIP 100% 20</code>`,
               reply_markup: ADMIN_KEYBOARD
             });
             return res.status(200).json({ ok: true });
@@ -1863,7 +1863,7 @@ export default async function handler(req, res) {
     if (update.callback_query) {
       const { id, data, message, from } = update.callback_query;
       const adminUsername = from.username || from.first_name || 'Admin';
-      const chatId = message.chat.id;
+      const chatId = (message && message.chat) ? message.chat.id : from.id;
 
       // Handle Language Selection
       if (data.startsWith('lang_')) {
@@ -1951,7 +1951,7 @@ export default async function handler(req, res) {
           `• <b>10,000 UZS</b> — Скидка 10,000 UZS для 100 чел. (код SAVE10K)\n` +
           `• <b>100% Одноразовый</b> — Случайный 100% код на 1 использование\n\n` +
           `<b>Формат создания вручную:</b>\n` +
-          `<code>/add_promo &lt;КОД&gt; &lt;СКИДКА&gt; [ЛИМИТ]</code>`;
+          `<code>/add_promo <КОД> <СКИДКА> [ЛИМИТ]</code>`;
 
         await callTelegram('editMessageText', {
           chat_id: chatId,
