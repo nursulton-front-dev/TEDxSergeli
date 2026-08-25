@@ -61,6 +61,7 @@ const VOLUNTEER_THREAD_ID = process.env.TELEGRAM_VOLUNTEER_THREAD_ID || process.
 const TICKET_THREAD_ID = process.env.TELEGRAM_TICKET_THREAD_ID || process.env.TOPIC_ID_TICKETS || process.env.TICKETS_TOPIC_ID || process.env.ADMIN_TOPIC_ID || '4';
 const SUPER_ADMIN_ID = '6804139305'; // Founder Telegram ID
 const API_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const BOT_USERNAME = 'TEDxSergeliBot';
 
 // Production WebApp Domain (Prevents Vercel preview login wall)
 const PUBLIC_DOMAIN = process.env.PUBLIC_URL || 'https://tedx-sergeli.vercel.app';
@@ -501,8 +502,6 @@ function calculateDiscount(basePrice, promo) {
 async function renderPromoList(chatId, messageId = null) {
   const promos = await getPromos();
   const promoList = Object.values(promos);
-  const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'TEDxSergeliSpecializedSchool_bot';
-
   let text = `🏷 <b>УПРАВЛЕНИЕ ПРОМОКОДАМИ TEDxSergeli</b>\n\n`;
   const inline_keyboard = [];
 
@@ -515,7 +514,7 @@ async function renderPromoList(chatId, messageId = null) {
       const code = String(p.code || 'UNKNOWN');
       const discStr = p.discountType === 'percent' ? `${p.discountValue}%` : `${p.discountValue.toLocaleString()} UZS`;
       const limitStr = p.maxUses > 0 ? `${p.usedCount || 0}/${p.maxUses}` : `${p.usedCount || 0} (безлимит)`;
-      const deepLink = `https://t.me/${botUsername}?start=promo_${encodeURIComponent(code)}`;
+      const deepLink = `https://t.me/${BOT_USERNAME}?start=promo_${encodeURIComponent(code)}`;
 
       text += `${idx + 1}. 🔑 <b><code>${escapeHtml(code)}</code></b> — Скидка: <b>${escapeHtml(discStr)}</b>\n` +
         `   📊 Использовано: ${escapeHtml(limitStr)} | Создал: ${escapeHtml(p.createdBy || 'Admin')}\n` +
@@ -620,8 +619,7 @@ async function issueTicketForUser({ userId, user, seatNumber, confirmedBy, promo
   user.confirmed_at = ticketData.confirmed_at;
   await kv.set(`user:${userId}`, user);
 
-  const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'TEDxSergeliSpecializedSchool_bot';
-  const qrUrl = `https://t.me/${botUsername}?start=scan_${ticketId}`;
+  const qrUrl = `https://t.me/${BOT_USERNAME}?start=scan_${ticketId}`;
 
   let photoBuffer = null;
   try {
