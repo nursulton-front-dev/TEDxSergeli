@@ -133,6 +133,61 @@ function calculateDiscount(basePrice, promo) {
   return { finalPrice, discountAmount, isValid: true, reason: 'ok' };
 }
 
+// Render Interactive Promo Code List with Inline Keyboards (Edit, Delete, Create)
+async function renderPromoList(chatId, messageId = null) {
+  const promos = await getPromos();
+  const promoList = Object.values(promos);
+  const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'TEDxSergeliSpecializedSchool_bot';
+
+  let text = `🏷 <b>УПРАВЛЕНИЕ ПРОМОКОДАМИ TEDxSergeli</b>\n\n`;
+  const inline_keyboard = [];
+
+  if (promoList.length === 0) {
+    text += `<i>Промокоды пока не созданы.</i>\n\n` +
+      `Вы можете создать новый промокод в 1 клик через кнопку <b>«➕ Создать промокод»</b> ниже или командой:\n` +
+      `<code>/add_promo VIP 100%</code>`;
+  } else {
+    text += `📊 <b>Активные промокоды (${promoList.length}):</b>\n\n`;
+    promoList.forEach((p, idx) => {
+      const discStr = p.discountType === 'percent' ? `${p.discountValue}%` : `${p.discountValue.toLocaleString()} UZS`;
+      const limitStr = p.maxUses > 0 ? `${p.usedCount || 0}/${p.maxUses}` : `${p.usedCount || 0} (безлимит)`;
+      const deepLink = `https://t.me/${botUsername}?start=promo_${p.code}`;
+
+      text += `${idx + 1}. 🔑 <b><code>${p.code}</code></b> — Скидка: <b>${discStr}</b>\n` +
+        `   📊 Использовано: ${limitStr} | Создал: ${p.createdBy || 'Admin'}\n` +
+        `   🔗 <code>${deepLink}</code>\n\n`;
+
+      inline_keyboard.push([
+        { text: `✏️ Изменить ${p.code}`, callback_data: `edit_promo_${p.code}` },
+        { text: `🗑 Удалить`, callback_data: `del_promo_${p.code}` }
+      ]);
+    });
+  }
+
+  inline_keyboard.push([
+    { text: "➕ Создать промокод", callback_data: "promo_create_wizard" },
+    { text: "🔄 Обновить список", callback_data: "refresh_promos" }
+  ]);
+
+  if (messageId) {
+    return await callTelegram('editMessageText', {
+      chat_id: chatId,
+      message_id: messageId,
+      parse_mode: 'HTML',
+      text,
+      reply_markup: { inline_keyboard }
+    });
+  } else {
+    return await callTelegram('sendMessage', {
+      chat_id: chatId,
+      parse_mode: 'HTML',
+      text,
+      reply_markup: { inline_keyboard }
+    });
+  }
+}
+
+
 // Helper to issue ticket for user (used by Admin Confirm and 100% Free Promo codes)
 async function issueTicketForUser({ userId, user, seatNumber, confirmedBy, promoCode }) {
   const ticketId = `TEDX-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -497,6 +552,81 @@ export default async function handler(req, res) {
       // Track user for analytics and broadcasts
       await trackUser(chatId);
 
+      // === GLOBAL INSTRUCTION & HELP COMMAND (Universal for all roles) ===
+      if (text && (text === 'ℹ️ Инструкция' || text === '📖 Инструкция' || text === 'Инструкция' || text === '📖 Инструкция контролера' || text === '/help' || text === '/instruction' || text === '/help_admin' || text === 'Справка')) {
+        if (await isSuperAdmin(from, chatId)) {
+          const scannerAppUrl = `${PUBLIC_DOMAIN}/scanner`;
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: `⚡️ <b>TEDxSergeli SUPER ADMIN DASHBOARD & ИНСТРУКЦИЯ</b>\n\n` +
+              `📱 <b>Входной контроль по QR-кодам:</b>\n` +
+              `Нажмите кнопку ниже, чтобы открыть веб-сканер билетов прямо в Telegram!\n\n` +
+              `👑 <b>Управление Администраторами:</b>\n` +
+              `• <code>/add_admin @username</code> — Назначить Со-Администратора\n` +
+              `• <code>/del_admin @username</code> — Снять Со-Администратора\n` +
+              `• <code>/admins</code> — Список всех Администраторов (кнопка <b>👑 Админы</b>)\n\n` +
+              `🏷 <b>Система Промокодов:</b>\n` +
+              `• Нажмите кнопку <b>🏷 Промокоды</b> или <code>/promos</code> — Интерактивное меню (Создание, Редактирование, Удаление в 1 клик)\n` +
+              `• <code>/add_promo <КОД> <СКИДКА> [ЛИМИТ]</code> — Быстрое создание\n` +
+              `• <code>/edit_promo <КОД> <СКИДКА> [ЛИМИТ]</code> — Редактирование промокода\n` +
+              `• <code>/del_promo <КОД></code> — Удаление промокода\n\n` +
+              `🎫 <b>Управление Контролерами Билетов:</b>\n` +
+              `• <code>/add_scanner @username</code> — Назначить волонтера-контролера\n` +
+              `• <code>/del_scanner @username</code> — Удалить контролера\n` +
+              `• <code>/scanners</code> — Список контролеров (кнопка <b>📋 Контролеры</b>)\n\n` +
+              `📊 <b>Мониторинг и База Данных:</b>\n` +
+              `• <code>/stats</code> — Живая статистика билетов (кнопка <b>📊 Статистика</b>)\n` +
+              `• <code>/export</code> — Выгрузка реестра билетов в Excel / CSV\n` +
+              `• <code>/find TEDX-849201</code> — Найти информацию о билете\n` +
+              `• <code>/reset_ticket TEDX-849201</code> — Сбросить статус билета\n` +
+              `• <code>/reset_db</code> — Очистить базу данных\n\n` +
+              `📢 <b>Массовые Рассылки:</b>\n` +
+              `• <code>/broadcast Ваш текст</code> — Отправить анонс всем пользователям`,
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "📷 QR-Сканерни очиш / Открыть QR-Сканер", web_app: { url: scannerAppUrl } }],
+                [{ text: "🏷 Промокоды (Меню управления)", callback_data: "refresh_promos" }]
+              ]
+            }
+          });
+          return res.status(200).json({ ok: true });
+        } else if (await isAuthorizedScanner(from, chatId)) {
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: `📖 <b>ИНСТРУКЦИЯ ДЛЯ КОНТРОЛЁРОВ TEDxSergeli:</b>\n\n` +
+              `1️⃣ <b>Проверка через QR-сканер:</b>\n` +
+              `• Нажмите кнопку <b>📱 Входной QR-Сканер</b> внизу.\n` +
+              `• Наведите камеру на QR-код на билете гостя.\n` +
+              `• Зелёный экран = ГОСТЬ ПРОПУЩЕН ✅\n` +
+              `• Красный экран = БИЛЕТ УЖЕ ИСПОЛЬЗОВАН 🛑\n\n` +
+              `2️⃣ <b>Проверка вручную (без QR):</b>\n` +
+              `• Отправьте боту <code>/find ID</code> (например, <code>/find TEDX-947695</code>).\n` +
+              `• Или нажмите <b>🔍 Проверить билет по ID</b>.\n` +
+              `• Бот покажет статус билета, ФИО гостя и место.`,
+            reply_markup: SCANNER_KEYBOARD
+          });
+          return res.status(200).json({ ok: true });
+        } else {
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: `ℹ️ <b>ИНСТРУКЦИЯ И СПРАВКА TEDxSergeli</b>\n\n` +
+              `🎟 <b>Как приобрести билет:</b>\n` +
+              `1. Введите <code>/start</code> или нажмите <b>«Перезапустить»</b>.\n` +
+              `2. Выберите удобный язык (O'zbekcha / Русский / English).\n` +
+              `3. Введите ваше ФИО и номер телефона.\n` +
+              `4. Выберите желаемое место в зале.\n` +
+              `5. Введите промокод (при наличии) и загрузите скриншот чека об оплате.\n\n` +
+              `📌 <b>Правила входа:</b>\n` +
+              `• После подтверждения вы получите электронный билет с QR-кодом.\n` +
+              `• Предъявите QR-код контролеру на входе в день мероприятия.`
+          });
+          return res.status(200).json({ ok: true });
+        }
+      }
+
       // === SUPER ADMIN COMMAND ENGINE ===
       if (text && (await isSuperAdmin(from, chatId))) {
 
@@ -561,7 +691,7 @@ export default async function handler(req, res) {
         }
 
         // Admin Dashboard / Help
-        if (text === '/admin' || text === '/help_admin' || text === 'ℹ️ Инструкция' || text === '/scanner' || text === '/checkin' || text === '/scan') {
+        if (text === '/admin' || text === '/help_admin' || text === '/scanner' || text === '/checkin' || text === '/scan') {
           const scannerAppUrl = `${PUBLIC_DOMAIN}/scanner`;
 
           await callTelegram('sendMessage', {
@@ -575,9 +705,10 @@ export default async function handler(req, res) {
               `• <code>/del_admin @username</code> — Снять Со-Администратора\n` +
               `• <code>/admins</code> — Список всех Администраторов (кнопка <b>👑 Админы</b>)\n\n` +
               `🏷 <b>Система Промокодов:</b>\n` +
+              `• Нажмите кнопку <b>🏷 Промокоды</b> или <code>/promos</code> — Интерактивное меню управления\n` +
               `• <code>/add_promo <КОД> <СКИДКА> [ЛИМИТ]</code> — Создать промокод\n` +
-              `• <code>/del_promo <КОД></code> — Удалить промокод\n` +
-              `• <code>/promos</code> — Список промокодов (кнопка <b>🏷 Промокоды</b>)\n\n` +
+              `• <code>/edit_promo <КОД> <СКИДКА> [ЛИМИТ]</code> — Редактировать промокод\n` +
+              `• <code>/del_promo <КОД></code> — Удалить промокод\n\n` +
               `🎫 <b>Управление Контролерами Билетов:</b>\n` +
               `• <code>/add_scanner @username</code> — Назначить волонтера-контролера\n` +
               `• <code>/del_scanner @username</code> — Удалить контролера\n` +
@@ -611,17 +742,7 @@ export default async function handler(req, res) {
           const limitRaw = parseInt(parts[3] || '0', 10) || 0;
 
           if (!code || !discountRaw) {
-            await callTelegram('sendMessage', {
-              chat_id: chatId,
-              parse_mode: 'HTML',
-              text: `⚠️ <b>Формат создания промокода:</b>\n` +
-                `<code>/add_promo <КОД> <СКИДКА> [ЛИМИТ]</code>\n\n` +
-                `<b>Примеры:</b>\n` +
-                `• <code>/add_promo VIP 100%</code> — Бесплатный VIP билет (без лимита)\n` +
-                `• <code>/add_promo EARLY20 20% 50</code> — Скидка 20% для первых 50 чел.\n` +
-                `• <code>/add_promo SAVE10K 10000 100</code> — Скидка 10,000 UZS для 100 чел.`,
-              reply_markup: ADMIN_KEYBOARD
-            });
+            await renderPromoList(chatId);
             return res.status(200).json({ ok: true });
           }
 
@@ -650,43 +771,45 @@ export default async function handler(req, res) {
           };
 
           await savePromos(promos);
+          await renderPromoList(chatId);
+          return res.status(200).json({ ok: true });
+        }
 
-          const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'TEDxSergeliSpecializedSchool_bot';
-          const deepLink = `https://t.me/${botUsername}?start=promo_${code}`;
-          const discountStr = discountType === 'percent' ? `${discountValue}%` : `${discountValue.toLocaleString()} UZS`;
-          const limitStr = limitRaw > 0 ? `${limitRaw} ta` : 'Cheksiz / Неограниченно';
+        // Edit Promo Code Command (/edit_promo <КОД> <СКИДКА> [ЛИМИТ])
+        if (text.startsWith('/edit_promo')) {
+          const parts = text.trim().split(/\s+/);
+          const code = (parts[1] || '').toUpperCase().trim();
+          const discountRaw = (parts[2] || '').trim();
+          const limitRaw = parts[3] !== undefined ? parseInt(parts[3], 10) : undefined;
 
-          const msg = `✅ <b>PROMO-KOD YARATILDI / ПРОМОКОД СОЗДАН!</b>\n\n` +
-            `🔑 <b>Код:</b> <code>${code}</code>\n` +
-            `🏷 <b>Скидка:</b> ${discountStr}\n` +
-            `🔢 <b>Лимит:</b> ${limitStr}\n` +
-            `👤 <b>Создатель:</b> ${creator}\n\n` +
-            `🔗 <b>Прямая ссылка для клиентов:</b>\n<code>${deepLink}</code>`;
+          const promos = await getPromos();
+          if (!code || !promos[code]) {
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `⚠️ <b>Использование:</b> <code>/edit_promo <КОД> <СКИДКА> [ЛИМИТ]</code>\n\nПример: <code>/edit_promo VIP 100% 20</code>`,
+              reply_markup: ADMIN_KEYBOARD
+            });
+            return res.status(200).json({ ok: true });
+          }
 
-          await callTelegram('sendMessage', {
-            chat_id: chatId,
-            parse_mode: 'HTML',
-            text: msg,
-            reply_markup: ADMIN_KEYBOARD
-          });
-
-          // Notify Admin Thread / Chat about the new promo code
-          if (ADMIN_CHAT_ID && String(ADMIN_CHAT_ID) !== String(chatId)) {
-            try {
-              await callTelegram('sendMessage', {
-                chat_id: ADMIN_CHAT_ID,
-                parse_mode: 'HTML',
-                text: `📣 <b>YANGI PROMO-KOD / НОВЫЙ ПРОМОКОД:</b>\n\n` +
-                  `🔑 <b>Код:</b> <code>${code}</code> (${discountStr})\n` +
-                  `🔢 <b>Лимит:</b> ${limitStr}\n` +
-                  `👤 <b>Админ:</b> ${creator}\n` +
-                  `🔗 <b>Ссылка:</b> <code>${deepLink}</code>`
-              });
-            } catch (notifyErr) {
-              console.error('Failed to notify admin chat:', notifyErr);
+          if (discountRaw) {
+            if (discountRaw.endsWith('%')) {
+              promos[code].discountType = 'percent';
+              promos[code].discountValue = Math.min(100, Math.max(1, parseInt(discountRaw.replace('%', ''), 10) || 0));
+            } else {
+              promos[code].discountType = 'fixed';
+              promos[code].discountValue = Math.max(1, parseInt(discountRaw.replace(/\D/g, ''), 10) || 0);
             }
           }
 
+          if (limitRaw !== undefined && !isNaN(limitRaw)) {
+            promos[code].maxUses = Math.max(0, limitRaw);
+          }
+
+          promos[code].updatedAt = new Date().toISOString();
+          await savePromos(promos);
+          await renderPromoList(chatId);
           return res.status(200).json({ ok: true });
         }
 
@@ -694,12 +817,7 @@ export default async function handler(req, res) {
         if (text.startsWith('/del_promo')) {
           const code = text.replace('/del_promo', '').trim().toUpperCase();
           if (!code) {
-            await callTelegram('sendMessage', {
-              chat_id: chatId,
-              parse_mode: 'HTML',
-              text: `⚠️ <b>Использование:</b> <code>/del_promo <КОД></code>`,
-              reply_markup: ADMIN_KEYBOARD
-            });
+            await renderPromoList(chatId);
             return res.status(200).json({ ok: true });
           }
 
@@ -707,61 +825,17 @@ export default async function handler(req, res) {
           if (promos[code]) {
             delete promos[code];
             await savePromos(promos);
-            await callTelegram('sendMessage', {
-              chat_id: chatId,
-              parse_mode: 'HTML',
-              text: `🗑 <b>Промокод <code>${code}</code> успешно удален.</b>`,
-              reply_markup: ADMIN_KEYBOARD
-            });
-          } else {
-            await callTelegram('sendMessage', {
-              chat_id: chatId,
-              parse_mode: 'HTML',
-              text: `❌ <b>Промокод <code>${code}</code> не найден.</b>`,
-              reply_markup: ADMIN_KEYBOARD
-            });
           }
+          await renderPromoList(chatId);
           return res.status(200).json({ ok: true });
         }
 
         // List Promo Codes (/promos or 🏷 Промокоды)
         if (text === '/promos' || text === '🏷 Промокоды') {
-          const promos = await getPromos();
-          const promoList = Object.values(promos);
-
-          const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'TEDxSergeliSpecializedSchool_bot';
-
-          if (promoList.length === 0) {
-            await callTelegram('sendMessage', {
-              chat_id: chatId,
-              parse_mode: 'HTML',
-              text: `🏷 <b>СПИСОК ПРОМОКОДОВ:</b>\n\n<i>Промокоды пока не созданы.</i>\n\nЧтобы создать промокод, используйте:\n<code>/add_promo VIP 100%</code>`,
-              reply_markup: ADMIN_KEYBOARD
-            });
-            return res.status(200).json({ ok: true });
-          }
-
-          let listText = `🏷 <b>СПИСОК АКТИВНЫХ ПРОМОКОДОВ (${promoList.length}):</b>\n\n`;
-          promoList.forEach((p, idx) => {
-            const discStr = p.discountType === 'percent' ? `${p.discountValue}%` : `${p.discountValue.toLocaleString()} UZS`;
-            const limitStr = p.maxUses > 0 ? `${p.usedCount}/${p.maxUses}` : `${p.usedCount} (безлимит)`;
-            const deepLink = `https://t.me/${botUsername}?start=promo_${p.code}`;
-
-            listText += `${idx + 1}. 🔑 <b><code>${p.code}</code></b> — Скидка: <b>${discStr}</b>\n` +
-              `   📊 Использовано: ${limitStr} | Создал: ${p.createdBy || 'Admin'}\n` +
-              `   🔗 <code>${deepLink}</code>\n\n`;
-          });
-
-          listText += `<i>Для удаления промокода: <code>/del_promo КОД</code></i>`;
-
-          await callTelegram('sendMessage', {
-            chat_id: chatId,
-            parse_mode: 'HTML',
-            text: listText,
-            reply_markup: ADMIN_KEYBOARD
-          });
+          await renderPromoList(chatId);
           return res.status(200).json({ ok: true });
         }
+
 
         // Add Super Admin
         if (text.startsWith('/add_admin')) {
@@ -1860,6 +1934,296 @@ export default async function handler(req, res) {
         await callTelegram('answerCallbackQuery', { callback_query_id: id });
         return res.status(200).json({ ok: true });
       }
+
+      // Handle Promo Code Management Callbacks
+      if (data === 'refresh_promos') {
+        await renderPromoList(chatId, message.message_id);
+        await callTelegram('answerCallbackQuery', { callback_query_id: id });
+        return res.status(200).json({ ok: true });
+      }
+
+      if (data === 'promo_create_wizard') {
+        const text = `➕ <b>СОЗДАНИЕ НОВОГО ПРОМОКОДА</b>\n\n` +
+          `Выберите готовый шаблон для создания в 1 клик или отправьте команду вручную:\n\n` +
+          `<b>Быстрые шаблоны:</b>\n` +
+          `• <b>VIP 100%</b> — Бесплатный VIP билет (код VIP100)\n` +
+          `• <b>20% Скидка</b> — Скидка 20% для первых 50 чел. (код SALE20)\n` +
+          `• <b>10,000 UZS</b> — Скидка 10,000 UZS для 100 чел. (код SAVE10K)\n` +
+          `• <b>100% Одноразовый</b> — Случайный 100% код на 1 использование\n\n` +
+          `<b>Формат создания вручную:</b>\n` +
+          `<code>/add_promo <КОД> <СКИДКА> [ЛИМИТ]</code>`;
+
+        await callTelegram('editMessageText', {
+          chat_id: chatId,
+          message_id: message.message_id,
+          parse_mode: 'HTML',
+          text,
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "🎟 VIP 100% (VIP100)", callback_data: "gen_promo_vip" },
+                { text: "🏷 20% Скидка (SALE20)", callback_data: "gen_promo_20" }
+              ],
+              [
+                { text: "💰 10,000 UZS (SAVE10K)", callback_data: "gen_promo_10k" },
+                { text: "🎲 100% Одноразовый", callback_data: "gen_promo_rand" }
+              ],
+              [
+                { text: "🔙 Назад в список", callback_data: "refresh_promos" }
+              ]
+            ]
+          }
+        });
+        await callTelegram('answerCallbackQuery', { callback_query_id: id });
+        return res.status(200).json({ ok: true });
+      }
+
+      if (data.startsWith('gen_promo_')) {
+        const type = data.replace('gen_promo_', '');
+        const promos = await getPromos();
+        const creator = from.username ? `@${from.username}` : (from.first_name || String(from.id));
+        let code = '';
+        let discountType = 'percent';
+        let discountValue = 100;
+        let maxUses = 0;
+
+        if (type === 'vip') {
+          code = 'VIP100';
+          discountType = 'percent';
+          discountValue = 100;
+          maxUses = 0;
+        } else if (type === '20') {
+          code = 'SALE20';
+          discountType = 'percent';
+          discountValue = 20;
+          maxUses = 50;
+        } else if (type === '10k') {
+          code = 'SAVE10K';
+          discountType = 'fixed';
+          discountValue = 10000;
+          maxUses = 100;
+        } else if (type === 'rand') {
+          code = `FREE${Math.floor(1000 + Math.random() * 9000)}`;
+          discountType = 'percent';
+          discountValue = 100;
+          maxUses = 1;
+        }
+
+        promos[code] = {
+          code,
+          discountType,
+          discountValue,
+          maxUses,
+          usedCount: promos[code]?.usedCount || 0,
+          createdBy: creator,
+          createdAt: new Date().toISOString()
+        };
+
+        await savePromos(promos);
+        await callTelegram('answerCallbackQuery', { callback_query_id: id, text: `✅ Промокод ${code} создан!` });
+        await renderPromoList(chatId, message.message_id);
+        return res.status(200).json({ ok: true });
+      }
+
+      if (data.startsWith('edit_promo_')) {
+        const code = data.replace('edit_promo_', '');
+        const promos = await getPromos();
+        const p = promos[code];
+
+        if (!p) {
+          await callTelegram('answerCallbackQuery', { callback_query_id: id, text: "❌ Промокод не найден!" });
+          await renderPromoList(chatId, message.message_id);
+          return res.status(200).json({ ok: true });
+        }
+
+        const discStr = p.discountType === 'percent' ? `${p.discountValue}%` : `${p.discountValue.toLocaleString()} UZS`;
+        const limitStr = p.maxUses > 0 ? `${p.maxUses} чел.` : 'Безлимитный';
+
+        const text = `✏️ <b>РЕДАКТИРОВАНИЕ ПРОМОКОДА: <code>${p.code}</code></b>\n\n` +
+          `🏷 <b>Текущая скидка:</b> <b>${discStr}</b>\n` +
+          `🔢 <b>Лимит использования:</b> <b>${limitStr}</b>\n` +
+          `📊 <b>Использовано:</b> <b>${p.usedCount || 0}</b>\n` +
+          `👤 <b>Создатель:</b> ${p.createdBy || 'Admin'}\n\n` +
+          `Выберите новое значение скидки или лимита в 1 клик:`;
+
+        await callTelegram('editMessageText', {
+          chat_id: chatId,
+          message_id: message.message_id,
+          parse_mode: 'HTML',
+          text,
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "🎟 100% (Бесплатно)", callback_data: `set_disc_${p.code}_100p` },
+                { text: "🏷 50% Скидка", callback_data: `set_disc_${p.code}_50p` },
+                { text: "🏷 20% Скидка", callback_data: `set_disc_${p.code}_20p` }
+              ],
+              [
+                { text: "💰 10,000 UZS", callback_data: `set_disc_${p.code}_10k` },
+                { text: "💰 20,000 UZS", callback_data: `set_disc_${p.code}_20k` }
+              ],
+              [
+                { text: "🔢 Лимит: 10", callback_data: `set_limit_${p.code}_10` },
+                { text: "🔢 Лимит: 50", callback_data: `set_limit_${p.code}_50` },
+                { text: "♾ Безлимит", callback_data: `set_limit_${p.code}_0` }
+              ],
+              [
+                { text: "🗑 Удалить промокод", callback_data: `del_promo_${p.code}` },
+                { text: "🔙 Назад в список", callback_data: "refresh_promos" }
+              ]
+            ]
+          }
+        });
+        await callTelegram('answerCallbackQuery', { callback_query_id: id });
+        return res.status(200).json({ ok: true });
+      }
+
+      if (data.startsWith('set_disc_')) {
+        const parts = data.replace('set_disc_', '').split('_');
+        const code = parts[0];
+        const valType = parts[1];
+
+        const promos = await getPromos();
+        if (promos[code]) {
+          if (valType.endsWith('p')) {
+            promos[code].discountType = 'percent';
+            promos[code].discountValue = parseInt(valType.replace('p', ''), 10) || 100;
+          } else if (valType.endsWith('k')) {
+            promos[code].discountType = 'fixed';
+            promos[code].discountValue = (parseInt(valType.replace('k', ''), 10) || 10) * 1000;
+          }
+          await savePromos(promos);
+          await callTelegram('answerCallbackQuery', { callback_query_id: id, text: `✅ Скидка для ${code} изменена!` });
+        }
+
+        const p = promos[code];
+        if (p) {
+          const discStr = p.discountType === 'percent' ? `${p.discountValue}%` : `${p.discountValue.toLocaleString()} UZS`;
+          const limitStr = p.maxUses > 0 ? `${p.maxUses} чел.` : 'Безлимитный';
+
+          await callTelegram('editMessageText', {
+            chat_id: chatId,
+            message_id: message.message_id,
+            parse_mode: 'HTML',
+            text: `✏️ <b>РЕДАКТИРОВАНИЕ ПРОМОКОДА: <code>${p.code}</code></b>\n\n` +
+              `🏷 <b>Текущая скидка:</b> <b>${discStr}</b>\n` +
+              `🔢 <b>Лимит использования:</b> <b>${limitStr}</b>\n` +
+              `📊 <b>Использовано:</b> <b>${p.usedCount || 0}</b>\n` +
+              `👤 <b>Создатель:</b> ${p.createdBy || 'Admin'}\n\n` +
+              `✅ <i>Скидка успешно обновлена!</i>`,
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: "🎟 100% (Бесплатно)", callback_data: `set_disc_${p.code}_100p` },
+                  { text: "🏷 50% Скидка", callback_data: `set_disc_${p.code}_50p` },
+                  { text: "🏷 20% Скидка", callback_data: `set_disc_${p.code}_20p` }
+                ],
+                [
+                  { text: "💰 10,000 UZS", callback_data: `set_disc_${p.code}_10k` },
+                  { text: "💰 20,000 UZS", callback_data: `set_disc_${p.code}_20k` }
+                ],
+                [
+                  { text: "🔢 Лимит: 10", callback_data: `set_limit_${p.code}_10` },
+                  { text: "🔢 Лимит: 50", callback_data: `set_limit_${p.code}_50` },
+                  { text: "♾ Безлимит", callback_data: `set_limit_${p.code}_0` }
+                ],
+                [
+                  { text: "🗑 Удалить промокод", callback_data: `del_promo_${p.code}` },
+                  { text: "🔙 Назад в список", callback_data: "refresh_promos" }
+                ]
+              ]
+            }
+          });
+        }
+        return res.status(200).json({ ok: true });
+      }
+
+      if (data.startsWith('set_limit_')) {
+        const parts = data.replace('set_limit_', '').split('_');
+        const code = parts[0];
+        const limitVal = parseInt(parts[1], 10) || 0;
+
+        const promos = await getPromos();
+        if (promos[code]) {
+          promos[code].maxUses = limitVal;
+          await savePromos(promos);
+          await callTelegram('answerCallbackQuery', { callback_query_id: id, text: `✅ Лимит для ${code} изменен!` });
+        }
+
+        const p = promos[code];
+        if (p) {
+          const discStr = p.discountType === 'percent' ? `${p.discountValue}%` : `${p.discountValue.toLocaleString()} UZS`;
+          const limitStr = p.maxUses > 0 ? `${p.maxUses} чел.` : 'Безлимитный';
+
+          await callTelegram('editMessageText', {
+            chat_id: chatId,
+            message_id: message.message_id,
+            parse_mode: 'HTML',
+            text: `✏️ <b>РЕДАКТИРОВАНИЕ ПРОМОКОДА: <code>${p.code}</code></b>\n\n` +
+              `🏷 <b>Текущая скидка:</b> <b>${discStr}</b>\n` +
+              `🔢 <b>Лимит использования:</b> <b>${limitStr}</b>\n` +
+              `📊 <b>Использовано:</b> <b>${p.usedCount || 0}</b>\n` +
+              `👤 <b>Создатель:</b> ${p.createdBy || 'Admin'}\n\n` +
+              `✅ <i>Лимит успешно обновлен!</i>`,
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: "🎟 100% (Бесплатно)", callback_data: `set_disc_${p.code}_100p` },
+                  { text: "🏷 50% Скидка", callback_data: `set_disc_${p.code}_50p` },
+                  { text: "🏷 20% Скидка", callback_data: `set_disc_${p.code}_20p` }
+                ],
+                [
+                  { text: "💰 10,000 UZS", callback_data: `set_disc_${p.code}_10k` },
+                  { text: "💰 20,000 UZS", callback_data: `set_disc_${p.code}_20k` }
+                ],
+                [
+                  { text: "🔢 Лимит: 10", callback_data: `set_limit_${p.code}_10` },
+                  { text: "🔢 Лимит: 50", callback_data: `set_limit_${p.code}_50` },
+                  { text: "♾ Безлимит", callback_data: `set_limit_${p.code}_0` }
+                ],
+                [
+                  { text: "🗑 Удалить промокод", callback_data: `del_promo_${p.code}` },
+                  { text: "🔙 Назад в список", callback_data: "refresh_promos" }
+                ]
+              ]
+            }
+          });
+        }
+        return res.status(200).json({ ok: true });
+      }
+
+      if (data.startsWith('del_promo_')) {
+        const code = data.replace('del_promo_', '');
+        await callTelegram('editMessageText', {
+          chat_id: chatId,
+          message_id: message.message_id,
+          parse_mode: 'HTML',
+          text: `⚠️ <b>ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ</b>\n\nВы действительно хотите удалить промокод <code>${code}</code>?`,
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "🔥 Да, удалить", callback_data: `confirm_del_${code}` },
+                { text: "❌ Отмена", callback_data: "refresh_promos" }
+              ]
+            ]
+          }
+        });
+        await callTelegram('answerCallbackQuery', { callback_query_id: id });
+        return res.status(200).json({ ok: true });
+      }
+
+      if (data.startsWith('confirm_del_')) {
+        const code = data.replace('confirm_del_', '');
+        const promos = await getPromos();
+        if (promos[code]) {
+          delete promos[code];
+          await savePromos(promos);
+          await callTelegram('answerCallbackQuery', { callback_query_id: id, text: `🗑 Промокод ${code} удален` });
+        }
+        await renderPromoList(chatId, message.message_id);
+        return res.status(200).json({ ok: true });
+      }
+
 
       // Handle Skip Promo Callback
       if (data === 'skip_promo') {
