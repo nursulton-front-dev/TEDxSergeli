@@ -505,6 +505,17 @@ function isInstructionRequest(value) {
     /^\/(?:help|instruction|help_admin)(?:@[A-Za-z0-9_]+)?$/iu.test(normalized);
 }
 
+function isAdminMenuButton(value) {
+  const norm = normalizeActionText(value);
+  return /^(?:📊\s*)?(?:статистика|live_stats|stats)$/iu.test(norm) ||
+    /^(?:🏷\s*)?(?:промокоды|promos)$/iu.test(norm) ||
+    /^(?:📋\s*)?(?:контролеры|scanners)$/iu.test(norm) ||
+    /^(?:👑\s*)?(?:админы|admins)$/iu.test(norm) ||
+    /^(?:🔍\s*)?(?:поиск пользователя|find_user)$/iu.test(norm) ||
+    /^(?:🎟\s*)?(?:выдать билет|issue_ticket)$/iu.test(norm) ||
+    /^(?:❌\s*)?скрыть меню$/iu.test(norm);
+}
+
 function normalizePromoCode(value) {
   return normalizeActionText(value).replace(/\s+/gu, '').toUpperCase();
 }
@@ -580,35 +591,82 @@ const SCANNER_KEYBOARD = {
 
 // Helper to check if a user is Super Admin (Founder, ADMIN_IDS env, or added Co-Admin)
 async function isSuperAdmin(from, chatId) {
-  const userIdStr = String(from ? from.id : chatId);
-  const adminChatStr = String(ADMIN_CHAT_ID || '');
-  const envAdminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+  try {
+    const userIdStr = String((from && from.id) ? from.id : (chatId || '')).trim();
+    const adminChatStr = String(ADMIN_CHAT_ID || '').trim();
+    const envAdminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim().toLowerCase().replace(/^@/, '')).filter(Boolean);
+    const userUsername = from && from.username ? from.username.toLowerCase().replace(/^@/, '').trim() : '';
 
-  if (userIdStr === SUPER_ADMIN_ID || (adminChatStr && userIdStr === adminChatStr) || envAdminIds.includes(userIdStr)) {
-    return true;
+    if (userIdStr && userIdStr === SUPER_ADMIN_ID) return true;
+    if (adminChatStr && (userIdStr === adminChatStr || String(chatId) === adminChatStr)) return true;
+
+    if (envAdminIds.length > 0) {
+      if (userIdStr && envAdminIds.includes(userIdStr.toLowerCase())) return true;
+      if (userUsername && envAdminIds.includes(userUsername)) return true;
+    }
+
+    let extraAdmins = await kv.get('super_admins');
+    if (!extraAdmins) return false;
+
+    if (typeof extraAdmins === 'string') {
+      try {
+        extraAdmins = JSON.parse(extraAdmins);
+      } catch (_e) {
+        extraAdmins = [extraAdmins];
+      }
+    }
+
+    if (!Array.isArray(extraAdmins)) return false;
+
+    return extraAdmins.some((a) => {
+      if (!a) return false;
+      let aStr = typeof a === 'object'
+        ? String(a.id || a.username || a.userId || '').toLowerCase().replace(/^@/, '').trim()
+        : String(a).toLowerCase().replace(/^@/, '').trim();
+
+      if (!aStr) return false;
+      return aStr === userIdStr.toLowerCase() || (userUsername && aStr === userUsername);
+    });
+  } catch (err) {
+    console.error('Error in isSuperAdmin:', err);
+    return false;
   }
-
-  const extraAdmins = (await kv.get('super_admins')) || [];
-  const username = from && from.username ? from.username.toLowerCase().replace('@', '') : '';
-
-  return extraAdmins.some((a) => {
-    const aStr = String(a).toLowerCase().replace('@', '');
-    return aStr === userIdStr || (username && aStr === username);
-  });
 }
 
 // Helper to check if a user is authorized as a ticket scanner/checker
 async function isAuthorizedScanner(from, chatId) {
-  if (await isSuperAdmin(from, chatId)) return true;
+  try {
+    if (await isSuperAdmin(from, chatId)) return true;
 
-  const scanners = (await kv.get('allowed_scanners')) || [];
-  const userIdStr = String(from ? from.id : chatId);
-  const username = from && from.username ? from.username.toLowerCase().replace('@', '') : '';
+    const userIdStr = String((from && from.id) ? from.id : (chatId || '')).trim();
+    const userUsername = from && from.username ? from.username.toLowerCase().replace(/^@/, '').trim() : '';
 
-  return scanners.some((s) => {
-    const sStr = String(s).toLowerCase().replace('@', '');
-    return sStr === userIdStr || (username && sStr === username);
-  });
+    let scanners = await kv.get('allowed_scanners');
+    if (!scanners) return false;
+
+    if (typeof scanners === 'string') {
+      try {
+        scanners = JSON.parse(scanners);
+      } catch (_e) {
+        scanners = [scanners];
+      }
+    }
+
+    if (!Array.isArray(scanners)) return false;
+
+    return scanners.some((s) => {
+      if (!s) return false;
+      let sStr = typeof s === 'object'
+        ? String(s.id || s.username || s.userId || '').toLowerCase().replace(/^@/, '').trim()
+        : String(s).toLowerCase().replace(/^@/, '').trim();
+
+      if (!sStr) return false;
+      return sStr === userIdStr.toLowerCase() || (userUsername && sStr === userUsername);
+    });
+  } catch (err) {
+    console.error('Error in isAuthorizedScanner:', err);
+    return false;
+  }
 }
 
 // Admin Audit Logging
@@ -2206,6 +2264,11 @@ export default async function handler(req, res) {
           }
 
           let extraAdmins = (await kv.get('super_admins')) || [];
+          if (typeof extraAdmins === 'string') {
+            try { extraAdmins = JSON.parse(extraAdmins); } catch (_e) { extraAdmins = [extraAdmins]; }
+          }
+          if (!Array.isArray(extraAdmins)) extraAdmins = [];
+
           if (!extraAdmins.includes(target)) {
             extraAdmins.push(target);
             await kv.set('super_admins', extraAdmins);
@@ -2224,7 +2287,12 @@ export default async function handler(req, res) {
         if (text.startsWith('/del_admin')) {
           const target = text.replace('/del_admin', '').trim().replace('@', '');
           let extraAdmins = (await kv.get('super_admins')) || [];
-          extraAdmins = extraAdmins.filter((a) => a.toLowerCase() !== target.toLowerCase());
+          if (typeof extraAdmins === 'string') {
+            try { extraAdmins = JSON.parse(extraAdmins); } catch (_e) { extraAdmins = [extraAdmins]; }
+          }
+          if (!Array.isArray(extraAdmins)) extraAdmins = [];
+
+          extraAdmins = extraAdmins.filter((a) => String(a).toLowerCase() !== target.toLowerCase());
           await kv.set('super_admins', extraAdmins);
 
           await callTelegram('sendMessage', {
@@ -2238,9 +2306,14 @@ export default async function handler(req, res) {
 
         // List Admins
         if (text === '/admins' || text.includes('Админы')) {
-          const extraAdmins = (await kv.get('super_admins')) || [];
+          let extraAdmins = (await kv.get('super_admins')) || [];
+          if (typeof extraAdmins === 'string') {
+            try { extraAdmins = JSON.parse(extraAdmins); } catch (_e) { extraAdmins = [extraAdmins]; }
+          }
+          if (!Array.isArray(extraAdmins)) extraAdmins = [];
+
           const listStr = extraAdmins.length > 0
-            ? extraAdmins.map((a, i) => `${i + 1}. <code>${a}</code>`).join('\n')
+            ? extraAdmins.map((a, i) => `${i + 1}. <code>${typeof a === 'object' ? (a.username || a.id) : a}</code>`).join('\n')
             : '<i>Дополнительные админы не назначены.</i>';
 
           await callTelegram('sendMessage', {
@@ -2268,6 +2341,11 @@ export default async function handler(req, res) {
           }
 
           let scanners = (await kv.get('allowed_scanners')) || [];
+          if (typeof scanners === 'string') {
+            try { scanners = JSON.parse(scanners); } catch (_e) { scanners = [scanners]; }
+          }
+          if (!Array.isArray(scanners)) scanners = [];
+
           if (!scanners.includes(target)) {
             scanners.push(target);
             await kv.set('allowed_scanners', scanners);
@@ -2286,7 +2364,12 @@ export default async function handler(req, res) {
         if (text.startsWith('/del_scanner')) {
           const target = text.replace('/del_scanner', '').trim().replace('@', '');
           let scanners = (await kv.get('allowed_scanners')) || [];
-          scanners = scanners.filter((s) => s.toLowerCase() !== target.toLowerCase());
+          if (typeof scanners === 'string') {
+            try { scanners = JSON.parse(scanners); } catch (_e) { scanners = [scanners]; }
+          }
+          if (!Array.isArray(scanners)) scanners = [];
+
+          scanners = scanners.filter((s) => String(s).toLowerCase() !== target.toLowerCase());
           await kv.set('allowed_scanners', scanners);
 
           await callTelegram('sendMessage', {
@@ -2300,7 +2383,11 @@ export default async function handler(req, res) {
 
         // List Scanners
         if (text === '/scanners' || text.includes('Контролеры')) {
-          const scanners = (await kv.get('allowed_scanners')) || [];
+          let scanners = (await kv.get('allowed_scanners')) || [];
+          if (typeof scanners === 'string') {
+            try { scanners = JSON.parse(scanners); } catch (_e) { scanners = [scanners]; }
+          }
+          if (!Array.isArray(scanners)) scanners = [];
           const listStr = scanners.length > 0
             ? scanners.map((s, i) => `${i + 1}. <code>${s}</code>`).join('\n')
             : '<i>Контролеры пока не добавлены.</i>';
@@ -2550,6 +2637,17 @@ export default async function handler(req, res) {
           });
           return res.status(200).json({ ok: true });
         }
+      }
+
+      // === FALLBACK FOR UNAUTHORIZED USERS CLICKING ADMIN MENU BUTTONS ===
+      if (text && isAdminMenuButton(text) && !(await isSuperAdmin(from, chatId))) {
+        await callTelegram('sendMessage', {
+          chat_id: chatId,
+          parse_mode: 'HTML',
+          text: `🛑 <b>Отказано в доступе / Ruxsat berilmadi</b>\n\nВы не являетесь авторизованным администратором бота.\nДля продолжения работы переключитесь на обычное меню с помощью команды /start.`,
+          reply_markup: { remove_keyboard: true }
+        });
+        return res.status(200).json({ ok: true });
       }
 
       // === CONTROLLER / SCANNER VOLUNTEER COMMAND ENGINE ===
