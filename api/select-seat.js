@@ -13,7 +13,7 @@ const kv = {
       if (!data.result) return null;
       let parsed = JSON.parse(data.result);
       if (typeof parsed === 'string') {
-        try { parsed = JSON.parse(parsed); } catch (_err) {}
+        try { parsed = JSON.parse(parsed); } catch (_err) { }
       }
       return parsed;
     } catch (e) {

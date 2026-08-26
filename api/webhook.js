@@ -66,6 +66,388 @@ const BOT_USERNAME = 'TEDxSergeliBot';
 // Production WebApp Domain (Prevents Vercel preview login wall)
 const PUBLIC_DOMAIN = process.env.PUBLIC_URL || 'https://tedx-sergeli.vercel.app';
 
+// Referral & Bonus Settings (Configurable)
+const MAX_BONUS_COVERAGE_PERCENT = parseInt(process.env.MAX_BONUS_COVERAGE_PERCENT || '50', 10);
+const REFERRAL_REGISTER_BONUS = 5000;
+const REFERRAL_PURCHASE_BONUS = 10000;
+const BASE_TICKET_PRICE = 49999;
+
+function getUserKeyboard(lang = 'ru') {
+  if (lang === 'uz') {
+    return {
+      keyboard: [
+        [{ text: "🏆 Referallar tanlovi (Top-3)" }],
+        [{ text: "🎁 Referal dasturi / Cashback" }],
+        [{ text: "🎟 Mening chiptam" }, { text: "ℹ️ Ma'lumot" }]
+      ],
+      resize_keyboard: true,
+      persistent: true
+    };
+  } else if (lang === 'en') {
+    return {
+      keyboard: [
+        [{ text: "🏆 Referral Contest (Top-3)" }],
+        [{ text: "🎁 Referral / Cashback" }],
+        [{ text: "🎟 My Ticket" }, { text: "ℹ️ Help" }]
+      ],
+      resize_keyboard: true,
+      persistent: true
+    };
+  }
+  return {
+    keyboard: [
+      [{ text: "🏆 Конкурс рефералов (Топ-3)" }],
+      [{ text: "🎁 Реферальная программа / Кешбэк" }],
+      [{ text: "🎟 Мой билет" }, { text: "ℹ️ Инструкция" }]
+    ],
+    resize_keyboard: true,
+    persistent: true
+  };
+}
+
+function anonymizeUserName(name, username, userId) {
+  if (name && typeof name === 'string' && name.trim() && !/^(?:mehmon|guest|гость)$/i.test(name.trim())) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      const firstName = parts[0];
+      const lastNameInitial = parts[1].charAt(0).toUpperCase();
+      return `${firstName} ${lastNameInitial}.`;
+    } else {
+      return parts[0];
+    }
+  }
+
+  if (username && typeof username === 'string' && username.trim()) {
+    const cleanUser = username.trim().replace(/^@/, '');
+    if (cleanUser.length <= 4) {
+      return `@${cleanUser.slice(0, 2)}***`;
+    }
+    return `@${cleanUser.slice(0, 3)}***`;
+  }
+
+  const idStr = String(userId || '');
+  return `Участник #${idStr.length > 4 ? idStr.slice(-4) : idStr}`;
+}
+
+async function getReferralLeaderboard() {
+  const allUserIds = (await kv.get('all_user_ids')) || [];
+  if (!Array.isArray(allUserIds) || allUserIds.length === 0) {
+    return { topList: [], userRankMap: {}, totalParticipants: 0 };
+  }
+
+  const userPromises = allUserIds.map(async (id) => {
+    try {
+      const u = await kv.get(`user:${id}`);
+      return { id: String(id), user: u };
+    } catch (_err) {
+      return { id: String(id), user: null };
+    }
+  });
+
+  const rawUsers = await Promise.all(userPromises);
+
+  const extraAdmins = (await kv.get('super_admins')) || [];
+  const scanners = (await kv.get('allowed_scanners')) || [];
+  const adminSet = new Set([
+    SUPER_ADMIN_ID,
+    String(ADMIN_CHAT_ID || ''),
+    ...extraAdmins.map(a => String(a).toLowerCase().replace('@', '')),
+    ...scanners.map(s => String(s).toLowerCase().replace('@', ''))
+  ]);
+
+  const candidates = [];
+  for (const { id, user } of rawUsers) {
+    if (!user) continue;
+    const userIdStr = String(id);
+    const username = (user.username || '').toLowerCase().replace('@', '');
+
+    if (adminSet.has(userIdStr) || (username && adminSet.has(username))) {
+      continue;
+    }
+
+    if (user.is_blocked || user.blocked || user.status === 'blocked') {
+      continue;
+    }
+
+    const invitedCount = typeof user.invited_count === 'number' ? user.invited_count : 0;
+    const bonusBalance = typeof user.bonus_balance === 'number' ? user.bonus_balance : 0;
+    const displayName = anonymizeUserName(user.name, user.username, id);
+
+    candidates.push({
+      userId: userIdStr,
+      name: user.name || null,
+      username: user.username || null,
+      displayName,
+      invitedCount,
+      bonusBalance
+    });
+  }
+
+  candidates.sort((a, b) => {
+    if (b.invitedCount !== a.invitedCount) {
+      return b.invitedCount - a.invitedCount;
+    }
+    return b.bonusBalance - a.bonusBalance;
+  });
+
+  const userRankMap = {};
+  candidates.forEach((cand, idx) => {
+    cand.rank = idx + 1;
+    userRankMap[cand.userId] = idx + 1;
+  });
+
+  return {
+    topList: candidates,
+    userRankMap,
+    totalParticipants: candidates.length
+  };
+}
+
+async function sendReferralContestMessage(chatId, user) {
+  const { topList, userRankMap } = await getReferralLeaderboard();
+  const userIdStr = String(chatId);
+  const userLang = user.lang || 'ru';
+  const myInvitedCount = typeof user.invited_count === 'number' ? user.invited_count : 0;
+  const userRank = userRankMap[userIdStr] ? userRankMap[userIdStr] : (topList.length + 1);
+  const refLink = `https://t.me/${BOT_USERNAME}?start=ref_${chatId}`;
+
+  const medals = ['🥇 1.', '🥈 2.', '🥉 3.', '4.', '5.'];
+  let topLines = [];
+
+  const top5 = topList.slice(0, 5);
+  if (top5.length === 0) {
+    topLines.push('<i>Пока нет участников с приглашениями. Станьте первым!</i>');
+  } else {
+    top5.forEach((cand, i) => {
+      const prefix = medals[i] || `${i + 1}.`;
+      topLines.push(`${prefix} ${escapeHtml(cand.displayName)} — <b>${cand.invitedCount}</b> чел.`);
+    });
+  }
+
+  let text = '';
+  let shareText = '';
+
+  if (userLang === 'uz') {
+    text = `🔥 <b>TEDx CHIPTA LIDERLARI POYGASI!</b> 🔥\n\n` +
+      `Do'stlaringizni taklif havolangiz orqali <b>3-sentabr 23:59</b> ga qadar taklif qiling!\n` +
+      `Eng ko'p do'st taklif qilgan <b>TOP-3</b> ishtirokchi <b>TEDxSergeli ga bepul chipta</b> yutib oladi!\n\n` +
+      `📊 <b>Joriy TOP peshqadamlar:</b>\n` +
+      topLines.join('\n') + `\n` +
+      `─────────────────\n` +
+      `👤 <b>Sizning o'rningiz:</b> #${userRank} (Taklif qilingan: <b>${myInvitedCount}</b> чел.)\n` +
+      `🔗 <b>Sizning havolangiz:</b> <code>${refLink}</code>`;
+    shareText = "TEDxSergeli konferensiyasiga taklif qilaman! Ushbu havola orqali ro'yxatdan o'ting:";
+  } else if (userLang === 'en') {
+    text = `🔥 <b>TEDx TICKET RACE!</b> 🔥\n\n` +
+      `Invite friends using your link until <b>September 3, 23:59</b>!\n` +
+      `The <b>TOP-3</b> participants with the most referrals will get <b>free tickets to TEDxSergeli</b>!\n\n` +
+      `📊 <b>Current Leaderboard TOP:</b>\n` +
+      topLines.join('\n') + `\n` +
+      `─────────────────\n` +
+      `👤 <b>Your Rank:</b> #${userRank} (Invited: <b>${myInvitedCount}</b> friends)\n` +
+      `🔗 <b>Your Link:</b> <code>${refLink}</code>`;
+    shareText = "Join TEDxSergeli event with me! Register via this link:";
+  } else {
+    text = `🔥 <b>ГОНКА ЗА БИЛЕТАМИ TEDx!</b> 🔥\n\n` +
+      `Приглашай друзей по своей ссылке до <b>3 сентября 23:59</b>!\n` +
+      `<b>ТОП-3</b> участника с наибольшим количеством приглашений получат <b>бесплатные билеты на TEDxSergeli</b>!\n\n` +
+      `📊 <b>Текущий ТОП лидеров:</b>\n` +
+      topLines.join('\n') + `\n` +
+      `─────────────────\n` +
+      `👤 <b>Ваша позиция:</b> #${userRank} (Приглашено: <b>${myInvitedCount}</b> чел.)\n` +
+      `🔗 <b>Ваша ссылка:</b> <code>${refLink}</code>`;
+    shareText = "Приглашаю на конференцию TEDxSergeli! Зарегистрируйся по моей ссылке:";
+  }
+
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent(shareText)}`;
+
+  return await callTelegram('sendMessage', {
+    chat_id: chatId,
+    parse_mode: 'HTML',
+    text,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: userLang === 'uz' ? "🔗 Havolani ulashish" : userLang === 'en' ? "🔗 Share link" : "🔗 Поделиться ссылкой",
+            url: shareUrl
+          }
+        ]
+      ]
+    }
+  });
+}
+
+async function sendReferralInfo(chatId, user) {
+  const bonusBalance = typeof user.bonus_balance === 'number' ? user.bonus_balance : 0;
+  const invitedCount = typeof user.invited_count === 'number' ? user.invited_count : 0;
+  const userLang = user.lang || 'ru';
+  const refLink = `https://t.me/${BOT_USERNAME}?start=ref_${chatId}`;
+
+  let text = '';
+  let shareText = '';
+  if (userLang === 'uz') {
+    text = `🎁 <b>TEDxSergeli Referal dasturi:</b>\n` +
+      `• <b>+5 000 UZS</b> — har bir taklif qilingan do'stingiz uchun.\n` +
+      `• <b>+10 000 UZS</b> — do'stingiz chipta sotib olganida.\n\n` +
+      `💰 <b>Sizning keshbek balansingiz:</b> ${bonusBalance.toLocaleString()} UZS\n` +
+      `👥 <b>Taklif qilingan do'stlar:</b> ${invitedCount}\n\n` +
+      `🔗 <b>Sizning havolangiz:</b> ${refLink}`;
+    shareText = "TEDxSergeli konferensiyasiga taklif qilaman! Ushbu havola orqali ro'yxatdan o'ting:";
+  } else if (userLang === 'en') {
+    text = `🎁 <b>TEDxSergeli Referral Program:</b>\n` +
+      `• <b>+5,000 UZS</b> — for each invited friend.\n` +
+      `• <b>+10,000 UZS</b> — when your friend buys a ticket.\n\n` +
+      `💰 <b>Your cashback balance:</b> ${bonusBalance.toLocaleString()} UZS\n` +
+      `👥 <b>Invited friends:</b> ${invitedCount}\n\n` +
+      `🔗 <b>Your link:</b> ${refLink}`;
+    shareText = "Join TEDxSergeli event with me! Register via this link:";
+  } else {
+    text = `🎁 <b>Реферальная программа TEDx:</b>\n` +
+      `• <b>+5 000 сум</b> — за каждого приглашенного друга.\n` +
+      `• <b>+10 000 сум</b> — когда друг покупает билет.\n\n` +
+      `💰 <b>Ваш баланс кешбэка:</b> ${bonusBalance.toLocaleString()} сум\n` +
+      `👥 <b>Приглашено друзей:</b> ${invitedCount}\n\n` +
+      `🔗 <b>Ваша ссылка:</b> ${refLink}`;
+    shareText = "Приглашаю на конференцию TEDxSergeli! Зарегистрируйся по моей ссылке:";
+  }
+
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent(shareText)}`;
+
+  return await callTelegram('sendMessage', {
+    chat_id: chatId,
+    parse_mode: 'HTML',
+    text,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: userLang === 'uz' ? "🔗 Havolani ulashish" : userLang === 'en' ? "🔗 Share link" : "🔗 Поделиться ссылкой", url: shareUrl }
+        ]
+      ]
+    }
+  });
+}
+
+async function sendPaymentInstructions(chatId, user) {
+  const lang = user.lang || 'ru';
+  const seatInfo = getSeatDetails(user.seatNumber || 1);
+  const finalPrice = typeof user.finalPrice === 'number' ? user.finalPrice : BASE_TICKET_PRICE;
+  const usedBonus = user.used_bonus_amount || 0;
+  const promoCode = user.promoCode || null;
+  const appliedDiscount = user.appliedDiscount || 0;
+
+  let msg = '';
+  if (lang === 'uz') {
+    msg = `✅ <b>Joy tanlandi: #${seatInfo.seatNumber} (${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin)</b>\n\n` +
+      (promoCode ? `🏷 <b>Promo-kod:</b> <code>${promoCode}</code> (-${appliedDiscount.toLocaleString()} UZS)\n` : '') +
+      (usedBonus > 0 ? `🎁 <b>Keshbek bonusi:</b> -${usedBonus.toLocaleString()} UZS\n` : '') +
+      `💳 <b>To'lov miqdori:</b> <b>${finalPrice.toLocaleString()} UZS</b>\n` +
+      `⏳ <b>Eslatma:</b> To'lov chekini yuborish uchun sizda <b>15 daqiqa</b> bor.\n\n` +
+      `💳 <b>Karta raqami:</b> <code>5614 6822 1091 3879</code>\n` +
+      `👤 <b>Qabul qiluvchi:</b> Abidjanov Baxtiyor\n\n` +
+      `📸 To'lovni amalga oshirgach, <b>chek (скриншот)</b>ni shu yerga yuboring.`;
+  } else if (lang === 'en') {
+    msg = `✅ <b>Seat selected: #${seatInfo.seatNumber} (${seatInfo.sectorName}, Row ${seatInfo.row} / Seat ${seatInfo.seat})</b>\n\n` +
+      (promoCode ? `🏷 <b>Promo Code:</b> <code>${promoCode}</code> (-${appliedDiscount.toLocaleString()} UZS)\n` : '') +
+      (usedBonus > 0 ? `🎁 <b>Cashback bonus:</b> -${usedBonus.toLocaleString()} UZS\n` : '') +
+      `💳 <b>Amount to pay:</b> <b>${finalPrice.toLocaleString()} UZS</b>\n` +
+      `⏳ <b>Notice:</b> You have <b>15 minutes</b> to send your payment receipt screenshot.\n\n` +
+      `💳 <b>Card Number:</b> <code>5614 6822 1091 3879</code>\n` +
+      `👤 <b>Recipient:</b> Abidjanov Baxtiyor\n\n` +
+      `📸 After payment, please send the receipt screenshot here.`;
+  } else {
+    msg = `✅ <b>Место выбрано: №${seatInfo.seatNumber} (${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место)</b>\n\n` +
+      (promoCode ? `🏷 <b>Промокод:</b> <code>${promoCode}</code> (-${appliedDiscount.toLocaleString()} UZS)\n` : '') +
+      (usedBonus > 0 ? `🎁 <b>Списано бонусов:</b> -${usedBonus.toLocaleString()} UZS\n` : '') +
+      `💳 <b>Сумма к оплате:</b> <b>${finalPrice.toLocaleString()} UZS</b>\n` +
+      `⏳ <b>Внимание:</b> У вас есть <b>15 минут</b> на отправку чека об оплате.\n\n` +
+      `💳 <b>Номер карты:</b> <code>5614 6822 1091 3879</code>\n` +
+      `👤 <b>Получатель:</b> Abidjanov Baxtiyor\n\n` +
+      `📸 После оплаты отправьте <b>скриншот чека</b> в этот чат.`;
+  }
+
+  const seatPickerUrl = `${PUBLIC_DOMAIN}/seat-picker`;
+  return await callTelegram('sendMessage', {
+    chat_id: chatId,
+    parse_mode: 'HTML',
+    text: msg,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: lang === 'uz' ? "🔄 Joyni o'zgartirish" : lang === 'en' ? "🔄 Change Seat" : "🔄 Сменить место",
+            web_app: { url: seatPickerUrl }
+          }
+        ]
+      ]
+    }
+  });
+}
+
+async function sendBonusOfferOrPayment(chatId, user, priceAfterPromo) {
+  const currentBonus = typeof user.bonus_balance === 'number' ? user.bonus_balance : 0;
+  const maxBonusCoverage = Math.floor(priceAfterPromo * (MAX_BONUS_COVERAGE_PERCENT / 100));
+  const applicableBonus = Math.min(currentBonus, maxBonusCoverage);
+
+  if (currentBonus > 0 && applicableBonus > 0) {
+    user.step = 'BONUS_OFFER';
+    user.pending_bonus_discount = applicableBonus;
+    user.price_after_promo = priceAfterPromo;
+    await kv.set(`user:${chatId}`, user);
+
+    const lang = user.lang || 'ru';
+    let text = '';
+    let btnUseText = '';
+    let btnSkipText = '';
+
+    if (lang === 'uz') {
+      text = `💰 <b>Sizda jamg'arilgan bonuslar bor!</b>\n\n` +
+        `Sizning keshbek balansingiz: <b>${currentBonus.toLocaleString()} UZS</b>\n` +
+        `Chipta narxining ${MAX_BONUS_COVERAGE_PERCENT}% gacha qismini bonus bilan to'lashingiz mumkin: <b>-${applicableBonus.toLocaleString()} UZS</b>\n\n` +
+        `Chipta narxi: <s>${priceAfterPromo.toLocaleString()} UZS</s> ➡️ <b>${(priceAfterPromo - applicableBonus).toLocaleString()} UZS</b>\n\n` +
+        `Chegirma uchun bonuslarni ishlatasizmi?`;
+      btnUseText = `🎁 Bonuslarni ishlatish (-${applicableBonus.toLocaleString()} UZS)`;
+      btnSkipText = `❌ Bonussiz davom etish`;
+    } else if (lang === 'en') {
+      text = `💰 <b>You have accumulated cashback bonuses!</b>\n\n` +
+        `Your balance: <b>${currentBonus.toLocaleString()} UZS</b>\n` +
+        `You can cover up to ${MAX_BONUS_COVERAGE_PERCENT}% of ticket price: <b>-${applicableBonus.toLocaleString()} UZS</b>\n\n` +
+        `Ticket price: <s>${priceAfterPromo.toLocaleString()} UZS</s> ➡️ <b>${(priceAfterPromo - applicableBonus).toLocaleString()} UZS</b>\n\n` +
+        `Apply bonuses for discount?`;
+      btnUseText = `🎁 Apply bonuses (-${applicableBonus.toLocaleString()} UZS)`;
+      btnSkipText = `❌ Continue without bonuses`;
+    } else {
+      text = `💰 <b>У вас есть накопительные бонусы!</b>\n\n` +
+        `Ваш баланс кешбэка: <b>${currentBonus.toLocaleString()} UZS</b>\n` +
+        `Вы можете списать до ${MAX_BONUS_COVERAGE_PERCENT}% от стоимости билета: <b>-${applicableBonus.toLocaleString()} UZS</b>\n\n` +
+        `Стоимость билета: <s>${priceAfterPromo.toLocaleString()} UZS</s> ➡️ <b>${(priceAfterPromo - applicableBonus).toLocaleString()} UZS</b>\n\n` +
+        `Применить бонусы для скидки?`;
+      btnUseText = `🎁 Использовать бонусы (-${applicableBonus.toLocaleString()} сум)`;
+      btnSkipText = `❌ Без бонусов`;
+    }
+
+    return await callTelegram('sendMessage', {
+      chat_id: chatId,
+      parse_mode: 'HTML',
+      text,
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: btnUseText, callback_data: 'use_bonus' }],
+          [{ text: btnSkipText, callback_data: 'skip_bonus' }]
+        ]
+      }
+    });
+  }
+
+  user.step = 'PAYMENT';
+  user.payment_status = 'pending_payment';
+  user.finalPrice = priceAfterPromo;
+  user.used_bonus_amount = 0;
+  await kv.set(`user:${chatId}`, user);
+
+  return await sendPaymentInstructions(chatId, user);
+}
+
 // This project talks to the Telegram Bot API directly, so conversational state
 // is persisted in KV instead of being managed by a framework-level FSM.
 const PROMO_CREATION_STATES = Object.freeze({
@@ -172,6 +554,7 @@ function isPromoManagementCallback(data) {
 
 const ADMIN_KEYBOARD = {
   keyboard: [
+    [{ text: "🔍 Поиск пользователя" }, { text: "🎟 Выдать билет" }],
     [{ text: "📊 Статистика" }, { text: "🏷 Промокоды" }],
     [{ text: "📋 Контролеры" }, { text: "👑 Админы" }],
     [{ text: "ℹ️ Инструкция" }, { text: "❌ Скрыть меню" }]
@@ -195,12 +578,13 @@ const SCANNER_KEYBOARD = {
   persistent: true
 };
 
-// Helper to check if a user is Super Admin (Founder or added Co-Admin)
+// Helper to check if a user is Super Admin (Founder, ADMIN_IDS env, or added Co-Admin)
 async function isSuperAdmin(from, chatId) {
   const userIdStr = String(from ? from.id : chatId);
   const adminChatStr = String(ADMIN_CHAT_ID || '');
+  const envAdminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
 
-  if (userIdStr === SUPER_ADMIN_ID || (adminChatStr && userIdStr === adminChatStr)) {
+  if (userIdStr === SUPER_ADMIN_ID || (adminChatStr && userIdStr === adminChatStr) || envAdminIds.includes(userIdStr)) {
     return true;
   }
 
@@ -225,6 +609,126 @@ async function isAuthorizedScanner(from, chatId) {
     const sStr = String(s).toLowerCase().replace('@', '');
     return sStr === userIdStr || (username && sStr === username);
   });
+}
+
+// Admin Audit Logging
+async function logAdminAuditAction({ adminId, recipientId, action, details }) {
+  try {
+    let logs = (await kv.get('admin_audit_logs')) || [];
+    if (!Array.isArray(logs)) logs = [];
+
+    const newLog = {
+      timestamp: new Date().toISOString(),
+      adminId: String(adminId),
+      recipientId: recipientId ? String(recipientId) : null,
+      action,
+      details: details || {}
+    };
+
+    logs.unshift(newLog);
+    if (logs.length > 500) logs = logs.slice(0, 500);
+
+    await kv.set('admin_audit_logs', logs);
+  } catch (err) {
+    console.error('Failed to log admin audit action:', err);
+  }
+}
+
+// Search user by telegram_id, @username, phone number, or full name
+async function searchUserByQuery(query) {
+  if (!query || typeof query !== 'string') return null;
+
+  const rawQuery = query.trim();
+  const cleanQuery = rawQuery.toLowerCase().replace(/^@/, '');
+  const digitsOnly = rawQuery.replace(/\D/g, '');
+
+  const allUserIds = (await kv.get('all_user_ids')) || [];
+  if (!Array.isArray(allUserIds) || allUserIds.length === 0) return null;
+
+  const userPromises = allUserIds.map(async (id) => {
+    try {
+      const u = await kv.get(`user:${id}`);
+      return { id: String(id), user: u };
+    } catch (_e) {
+      return { id: String(id), user: null };
+    }
+  });
+
+  const rawUsers = await Promise.all(userPromises);
+
+  for (const { id, user } of rawUsers) {
+    if (!user) continue;
+
+    const userIdStr = String(id);
+    const username = (user.username || '').toLowerCase().replace(/^@/, '');
+    const phoneDigits = (user.phone || '').replace(/\D/g, '');
+    const nameStr = (user.name || '').toLowerCase();
+
+    // Direct ID match
+    if (userIdStr === cleanQuery || (digitsOnly && userIdStr === digitsOnly)) {
+      return { id: userIdStr, user };
+    }
+
+    // Username match
+    if (cleanQuery && username === cleanQuery) {
+      return { id: userIdStr, user };
+    }
+
+    // Phone number match
+    if (digitsOnly && digitsOnly.length >= 7 && phoneDigits.includes(digitsOnly)) {
+      return { id: userIdStr, user };
+    }
+
+    // Full name match
+    if (cleanQuery && cleanQuery.length >= 3 && nameStr.includes(cleanQuery)) {
+      return { id: userIdStr, user };
+    }
+  }
+
+  return null;
+}
+
+// Render formatted user profile card with action inline buttons
+function renderUserProfileCard(targetUserId, targetUser) {
+  const name = targetUser.name || 'Mehmon';
+  const username = targetUser.username ? `@${targetUser.username.replace(/^@/, '')}` : 'не указан';
+  const phone = targetUser.phone || 'не указан';
+  const bonusBalance = typeof targetUser.bonus_balance === 'number' ? targetUser.bonus_balance : 0;
+  const invitedCount = typeof targetUser.invited_count === 'number' ? targetUser.invited_count : 0;
+
+  let ticketStatusStr = '❌ Нет билета';
+  if (targetUser.payment_status === 'confirmed' && targetUser.ticketId) {
+    if (targetUser.is_manual_issue) {
+      ticketStatusStr = `🎟 <b>Выдан вручную</b> (<code>${targetUser.ticketId}</code> - ${targetUser.ticket_type || 'Standard'})`;
+    } else {
+      ticketStatusStr = `✅ <b>Куплен</b> (<code>${targetUser.ticketId}</code>)`;
+    }
+  }
+
+  const cardText = `👤 <b>Пользователь:</b> ${escapeHtml(name)} (${escapeHtml(username)})\n` +
+    `🆔 <b>ID:</b> <code>${targetUserId}</code>\n` +
+    `📱 <b>Телефон:</b> <code>${escapeHtml(phone)}</code>\n` +
+    `💰 <b>Бонусный баланс:</b> ${bonusBalance.toLocaleString()} сум\n` +
+    `👥 <b>Пригласил:</b> ${invitedCount} чел.\n` +
+    `🎟 <b>Статус билета:</b> ${ticketStatusStr}`;
+
+  const inlineKeyboard = [];
+
+  const row1 = [{ text: "🎟 Выдать билет", callback_data: `admin_select_type_${targetUserId}` }];
+  if (targetUser.payment_status === 'confirmed' && targetUser.ticketId) {
+    row1.push({ text: "🚫 Отозвать билет", callback_data: `admin_revoke_ticket_${targetUserId}` });
+  }
+  inlineKeyboard.push(row1);
+
+  inlineKeyboard.push([
+    { text: "💰 Изменить баланс", callback_data: `admin_ask_balance_${targetUserId}` }
+  ]);
+
+  inlineKeyboard.push([
+    { text: "🔍 Новый поиск", callback_data: "admin_search_prompt" }
+  ]);
+
+  return { text: cardText, reply_markup: { inline_keyboard: inlineKeyboard } };
 }
 
 // Promo Code Helper Functions
@@ -559,8 +1063,8 @@ async function renderPromoList(chatId, messageId = null) {
 }
 
 
-// Helper to issue ticket for user (used by Admin Confirm and 100% Free Promo codes)
-async function issueTicketForUser({ userId, user, seatNumber, confirmedBy, promoCode }) {
+// Helper to issue ticket for user (used by Admin Confirm, 100% Free Promo codes, and Manual Admin Issuance)
+async function issueTicketForUser({ userId, user, seatNumber, confirmedBy, promoCode, isManualIssue = false, issuedBy = null, ticketType = 'Standard' }) {
   const ticketId = `TEDX-${Math.floor(100000 + Math.random() * 900000)}`;
 
   let allocatedSeats = (await kv.get('allocated_seats')) || [];
@@ -606,18 +1110,159 @@ async function issueTicketForUser({ userId, user, seatNumber, confirmedBy, promo
     row: seatInfo.row,
     seat: seatInfo.seat,
     status: 'valid',
+    ticket_status: 'ACTIVE',
     promoCode: promoCode || null,
+    is_manual_issue: isManualIssue,
+    issued_by: issuedBy ? String(issuedBy) : null,
+    ticket_type: ticketType,
     confirmed_at: new Date().toISOString()
   };
   await kv.set(`ticket:${ticketId}`, ticketData);
   await trackTicket(ticketId);
 
+  // Deduct applied cashback bonuses upon ticket confirmation
+  if (user.used_bonus_amount && user.used_bonus_amount > 0) {
+    const freshUser = (await kv.get(`user:${userId}`)) || user;
+    const currentBonus = typeof freshUser.bonus_balance === 'number' ? freshUser.bonus_balance : 0;
+    const bonusToDeduct = Math.min(currentBonus, user.used_bonus_amount);
+    user.bonus_balance = Math.max(0, currentBonus - bonusToDeduct);
+    user.used_bonus_amount = 0;
+  }
+
+  // Process referral reward for referrer on buyer's first purchase (+10 000 UZS)
+  if (user.referrer_id && !user.has_purchased) {
+    const referrerId = String(user.referrer_id);
+    if (referrerId !== String(userId)) {
+      try {
+        let referrer = (await kv.get(`user:${referrerId}`)) || {};
+        const currentRefBonus = typeof referrer.bonus_balance === 'number' ? referrer.bonus_balance : 0;
+        referrer.bonus_balance = currentRefBonus + REFERRAL_PURCHASE_BONUS;
+        await kv.set(`user:${referrerId}`, referrer);
+
+        const refLang = referrer.lang || 'ru';
+        let refMsg = '';
+        if (refLang === 'uz') {
+          refMsg = `🚀 <b>Sizning do'stingiz chipta sotib oldi!</b> Sizga <b>+10 000 UZS</b> keshbek berildi.`;
+        } else if (refLang === 'en') {
+          refMsg = `🚀 <b>Your friend bought a ticket!</b> You earned <b>+10,000 UZS</b> cashback.`;
+        } else {
+          refMsg = `🚀 <b>Ваш друг купил билет! Вам начислено +10 000 сум кешбэка.</b>`;
+        }
+        await callTelegram('sendMessage', {
+          chat_id: referrerId,
+          parse_mode: 'HTML',
+          text: refMsg
+        });
+      } catch (refErr) {
+        console.error('Failed to process purchase bonus for referrer:', refErr);
+      }
+    }
+  }
+
+  user.has_purchased = true;
   user.ticketId = ticketId;
   user.seatNumber = seatInfo.seatNumber;
   user.seatId = seatInfo.seatId;
   user.payment_status = 'confirmed';
+  user.ticket_status = 'ACTIVE';
+  user.is_manual_issue = isManualIssue;
+  user.issued_by = issuedBy ? String(issuedBy) : null;
+  user.ticket_type = ticketType;
   user.confirmed_at = ticketData.confirmed_at;
   await kv.set(`user:${userId}`, user);
+
+  return { ticketId, seatInfo };
+}
+
+async function issueManualTicket({ adminId, recipientId, ticketType = 'Standard' }) {
+  let user = (await kv.get(`user:${recipientId}`)) || {};
+  user.name = user.name || 'Mehmon';
+
+  const { ticketId, seatInfo } = await issueTicketForUser({
+    userId: recipientId,
+    user,
+    confirmedBy: `Admin (${adminId})`,
+    isManualIssue: true,
+    issuedBy: adminId,
+    ticketType
+  });
+
+  await logAdminAuditAction({
+    adminId,
+    recipientId,
+    action: 'ISSUE_TICKET_MANUAL',
+    details: { ticketId, ticketType, seatNumber: seatInfo.seatNumber }
+  });
+
+  const uLang = user.lang || 'ru';
+  let userMsg = '';
+  if (uLang === 'uz') {
+    userMsg = `🎉 <b>Sizga TEDxSergeli uchun shaxsiy chipta taqdim etildi!</b>\n\n` +
+      `🎟 <b>Kategoriya:</b> ${ticketType}\n` +
+      `📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
+      `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n` +
+      `📅 <b>Sana:</b> 4-sentabr, 2026, 14:00\n` +
+      `📍 <b>Manzil:</b> Sergeli Ixtisoslashtirilgan Maktabi\n\n` +
+      `📱 <i>Pastroqda sizning QR-kodli elektron chiptangiz biriktirildi:</i>`;
+  } else if (uLang === 'en') {
+    userMsg = `🎉 <b>You have been granted a personal ticket to TEDxSergeli!</b>\n\n` +
+      `🎟 <b>Category:</b> ${ticketType}\n` +
+      `📍 <b>Seat:</b> ${seatInfo.sectorName}, Row ${seatInfo.row} / Seat ${seatInfo.seat} (№${seatInfo.seatNumber})\n` +
+      `🔑 <b>Ticket ID:</b> <code>${ticketId}</code>\n` +
+      `📅 <b>Date:</b> September 4, 2026, 14:00\n` +
+      `📍 <b>Location:</b> Sergeli Specialized School\n\n` +
+      `📱 <i>Your QR code ticket is attached below:</i>`;
+  } else {
+    userMsg = `🎉 <b>Вам предоставлен персональный билет на TEDxSergeli!</b>\n\n` +
+      `🎟 <b>Категория:</b> ${ticketType}\n` +
+      `📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место (№${seatInfo.seatNumber})\n` +
+      `🔑 <b>ID Билета:</b> <code>${ticketId}</code>\n` +
+      `📅 <b>Дата:</b> 4 сентября, 2026, 14:00\n` +
+      `📍 <b>Локация:</b> Sergeli Specialized School\n\n` +
+      `📱 <i>Ваш электронный билет с QR-кодом прикреплен ниже:</i>`;
+  }
+
+  const qrUrl = `https://t.me/${BOT_USERNAME}?start=scan_${ticketId}`;
+  let photoBuffer = null;
+  try {
+    photoBuffer = await generateTicketQrImage(qrUrl);
+  } catch (err) {
+    console.error('Failed to generate QR for manual ticket:', err);
+  }
+
+  if (photoBuffer) {
+    try {
+      const formData = new FormData();
+      formData.append('chat_id', recipientId);
+      formData.append('caption', userMsg);
+      formData.append('parse_mode', 'HTML');
+      formData.append('photo', new Blob([photoBuffer], { type: 'image/png' }), `ticket_${ticketId}.png`);
+      formData.append('reply_markup', JSON.stringify(getUserKeyboard(uLang)));
+
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+        method: 'POST',
+        body: formData
+      });
+    } catch (sendErr) {
+      console.error('Failed to send photo for manual ticket:', sendErr);
+      await callTelegram('sendMessage', {
+        chat_id: recipientId,
+        parse_mode: 'HTML',
+        text: userMsg,
+        reply_markup: getUserKeyboard(uLang)
+      });
+    }
+  } else {
+    await callTelegram('sendMessage', {
+      chat_id: recipientId,
+      parse_mode: 'HTML',
+      text: userMsg,
+      reply_markup: getUserKeyboard(uLang)
+    });
+  }
+
+  return { ticketId, seatInfo };
+}
 
   const qrUrl = `https://t.me/${BOT_USERNAME}?start=scan_${ticketId}`;
 
@@ -932,6 +1577,135 @@ export default async function handler(req, res) {
       // Track user for analytics and broadcasts
       await trackUser(chatId);
 
+      // === REFERRAL CONTEST & LEADERBOARD HANDLER ===
+      if (text && (
+        /^\/(?:contest|leaderboard|top|contest_info)(?:@[A-Za-z0-9_]+)?$/iu.test(normalizeActionText(text)) ||
+        /^(?:🏆\s*)?(?:конкурс рефералов|referallar tanlovi|referral contest)/iu.test(normalizeActionText(text))
+      )) {
+        let user = (await kv.get(`user:${chatId}`)) || {};
+        await sendReferralContestMessage(chatId, user);
+        return res.status(200).json({ ok: true });
+      }
+
+      // === REFERRAL & CASHBACK INFO HANDLER ===
+      if (text && (
+        /^\/(?:referral|bonus|cashback|ref)(?:@[A-Za-z0-9_]+)?$/iu.test(normalizeActionText(text)) ||
+        /^(?:🎁\s*)?(?:реферальная программа|кешбэк|referal|referral)/iu.test(normalizeActionText(text))
+      )) {
+        let user = (await kv.get(`user:${chatId}`)) || {};
+        await sendReferralInfo(chatId, user);
+        return res.status(200).json({ ok: true });
+      }
+
+      // === MY TICKET BUTTON HANDLER ===
+      if (text && /^(?:🎟\s*)?(?:мой билет|mening chiptam|my ticket)$/iu.test(normalizeActionText(text))) {
+        let user = (await kv.get(`user:${chatId}`)) || {};
+        if (user.payment_status === 'confirmed' && user.ticketId) {
+          const userLang = user.lang || 'ru';
+          const ticket = await kv.get(`ticket:${user.ticketId}`);
+          const seatInfo = getSeatDetails(user.seatNumber || (ticket ? ticket.seatNumber : 1));
+          let msg = userLang === 'uz'
+            ? `🎉 <b>Sizda faol TEDxSergeli elektron chiptangiz bor.</b>\n\n🎟 <b>Chipta ID:</b> <code>${user.ticketId}</code>\n📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin\n👤 <b>Ism:</b> ${user.name || 'Mehmon'}`
+            : `🎉 <b>У вас есть активный электронный билет TEDxSergeli.</b>\n\n🎟 <b>ID Билета:</b> <code>${user.ticketId}</code>\n📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место\n👤 <b>Имя:</b> ${user.name || 'Гость'}`;
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: msg,
+            reply_markup: getUserKeyboard(userLang)
+          });
+          return res.status(200).json({ ok: true });
+        }
+      }
+
+      // === ADMIN COMMAND: /contest_results ===
+      if (text && /^\/(?:contest_results|finish_contest)(?:@[A-Za-z0-9_]+)?$/iu.test(normalizeActionText(text))) {
+        if (!(await isSuperAdmin(from, chatId))) {
+          await callTelegram('sendMessage', { chat_id: chatId, text: '🛑 Отказано в доступе.' });
+          return res.status(200).json({ ok: true });
+        }
+
+        const { topList } = await getReferralLeaderboard();
+        const winners = topList.slice(0, 3);
+
+        if (winners.length === 0) {
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: '⚠️ <b>Конкурс рефералов:</b> Участников с приглашениями пока нет.'
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        let reportLines = [];
+        const medals = ['🥇 1-е место', '🥈 2-е место', '🥉 3-е место'];
+
+        for (let i = 0; i < winners.length; i++) {
+          const winner = winners[i];
+          const rank = i + 1;
+          const winnerId = winner.userId;
+          let winnerUser = (await kv.get(`user:${winnerId}`)) || {};
+
+          if (!winnerUser.ticketId || winnerUser.payment_status !== 'confirmed') {
+            try {
+              const { ticketId, seatInfo } = await issueTicketForUser({
+                userId: winnerId,
+                user: winnerUser,
+                confirmedBy: 'Referral Contest Winner'
+              });
+              winnerUser.ticketId = ticketId;
+              winnerUser.seatNumber = seatInfo.seatNumber;
+            } catch (issueErr) {
+              console.error(`Failed to issue ticket for contest winner ${winnerId}:`, issueErr);
+            }
+          }
+
+          const wLang = winnerUser.lang || 'ru';
+          let winMsg = '';
+          if (wLang === 'uz') {
+            winMsg = `🎉 <b>TABRIKLAYMIZ!</b>\n\n` +
+              `Siz TEDxSergeli referallar tanlovida <b>${rank}-o'rinni</b> egalladingiz va <b>bepul chipta</b> yutib oldingiz! 🎟\n\n` +
+              `QR-kodli elektron chiptangiz rasmiylashtirildi. Uni <b>«🎟 Mening chiptam»</b> tugmasi orqali ko'rishingiz mumkin!`;
+          } else if (wLang === 'en') {
+            winMsg = `🎉 <b>CONGRATULATIONS!</b>\n\n` +
+              `You placed <b>#${rank}</b> in the TEDxSergeli referral contest and won a <b>free ticket</b>! 🎟\n\n` +
+              `Your digital ticket has been issued. Check it anytime via the <b>«🎟 My Ticket»</b> button!`;
+          } else {
+            winMsg = `🎉 <b>ПОЗДРАВЛЯЕМ!</b>\n\n` +
+              `Вы заняли <b>${rank}-е место</b> в конкурсе рефералов TEDxSergeli и выиграли <b>бесплатный билет</b>! 🎟\n\n` +
+              `Ваш электронный билет с QR-кодом уже выписан! Нажмите <b>«🎟 Мой билет»</b>, чтобы просмотреть его.`;
+          }
+
+          try {
+            await callTelegram('sendMessage', {
+              chat_id: winnerId,
+              parse_mode: 'HTML',
+              text: winMsg,
+              reply_markup: getUserKeyboard(wLang)
+            });
+          } catch (notifyErr) {
+            console.error(`Failed to notify winner ${winnerId}:`, notifyErr);
+          }
+
+          reportLines.push(
+            `${medals[i]}: <b>${escapeHtml(winner.displayName)}</b> (ID: <code>${winnerId}</code>)\n` +
+            `   👥 Приглашено: <b>${winner.invitedCount}</b> чел. | 🎟 Билет: <code>${winnerUser.ticketId || 'Выписан'}</code>`
+          );
+        }
+
+        const reportText = `🏆 <b>ИТОГИ КОНКУРСА РЕФЕРАЛОВ TEDxSergeli</b>\n\n` +
+          `Победители официально зафиксированы и уведомлены!\n\n` +
+          reportLines.join('\n\n');
+
+        await callTelegram('sendMessage', {
+          chat_id: chatId,
+          parse_mode: 'HTML',
+          text: reportText,
+          reply_markup: ADMIN_KEYBOARD
+        });
+
+        return res.status(200).json({ ok: true });
+      }
+
       // === GLOBAL INSTRUCTION & HELP COMMAND (Universal for all roles) ===
       // This branch intentionally precedes every command/state branch: it is
       // the raw-webhook equivalent of an FSM handler registered with state="*".
@@ -1041,6 +1815,201 @@ export default async function handler(req, res) {
 
       // === SUPER ADMIN COMMAND ENGINE ===
       if (text && (await isSuperAdmin(from, chatId))) {
+
+        // Handle Active Admin Prompt Steps
+        let currentAdminUser = (await kv.get(`user:${chatId}`)) || {};
+        if (currentAdminUser.admin_step) {
+          const activeStep = currentAdminUser.admin_step;
+
+          if (activeStep === 'ADMIN_SEARCH_USER') {
+            currentAdminUser.admin_step = null;
+            await kv.set(`user:${chatId}`, currentAdminUser);
+
+            const result = await searchUserByQuery(text);
+            if (result) {
+              const card = renderUserProfileCard(result.id, result.user);
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                parse_mode: 'HTML',
+                text: card.text,
+                reply_markup: card.reply_markup
+              });
+            } else {
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                parse_mode: 'HTML',
+                text: `❌ <b>Пользователь "${escapeHtml(text)}" не найден в базе данных.</b>`,
+                reply_markup: ADMIN_KEYBOARD
+              });
+            }
+            return res.status(200).json({ ok: true });
+          }
+
+          if (activeStep === 'ADMIN_ISSUE_TICKET_PROMPT') {
+            currentAdminUser.admin_step = null;
+            await kv.set(`user:${chatId}`, currentAdminUser);
+
+            const result = await searchUserByQuery(text);
+            if (result) {
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                parse_mode: 'HTML',
+                text: `🎟 <b>ВЫБОР КАТЕГОРИИ БИЛЕТА</b>\n\n` +
+                  `Получатель: <b>${escapeHtml(result.user.name || 'Mehmon')}</b> (<code>${result.id}</code>)\n` +
+                  `Выберите тип выписываемого билета:`,
+                reply_markup: {
+                  inline_keyboard: [
+                    [{ text: "🎫 Standard", callback_data: `admin_issue_Standard_${result.id}` }],
+                    [{ text: "⭐ VIP", callback_data: `admin_issue_VIP_${result.id}` }],
+                    [{ text: "🏆 Winner (Конкурс)", callback_data: `admin_issue_Winner_${result.id}` }],
+                    [{ text: "❌ Отмена", callback_data: "admin_cancel_step" }]
+                  ]
+                }
+              });
+            } else {
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                parse_mode: 'HTML',
+                text: `❌ <b>Пользователь "${escapeHtml(text)}" не найден.</b>`,
+                reply_markup: ADMIN_KEYBOARD
+              });
+            }
+            return res.status(200).json({ ok: true });
+          }
+
+          if (activeStep.startsWith('ADMIN_SET_BALANCE_')) {
+            const targetUserId = activeStep.replace('ADMIN_SET_BALANCE_', '');
+            currentAdminUser.admin_step = null;
+            await kv.set(`user:${chatId}`, currentAdminUser);
+
+            const newBalance = parseInt(text.replace(/\D/g, ''), 10);
+            if (isNaN(newBalance) || newBalance < 0) {
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                parse_mode: 'HTML',
+                text: `⚠️ <b>Некорректная сумма баланса.</b> Пожалуйста, введите положительное число.`,
+                reply_markup: ADMIN_KEYBOARD
+              });
+              return res.status(200).json({ ok: true });
+            }
+
+            let targetUser = (await kv.get(`user:${targetUserId}`)) || {};
+            const oldBalance = typeof targetUser.bonus_balance === 'number' ? targetUser.bonus_balance : 0;
+            targetUser.bonus_balance = newBalance;
+            await kv.set(`user:${targetUserId}`, targetUser);
+
+            await logAdminAuditAction({
+              adminId: chatId,
+              recipientId: targetUserId,
+              action: 'SET_BALANCE',
+              details: { oldBalance, newBalance }
+            });
+
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `✅ <b>Бонусный баланс пользователя <code>${targetUserId}</code> успешно изменён!</b>\n\nСтарый баланс: ${oldBalance.toLocaleString()} сум\nНовый баланс: <b>${newBalance.toLocaleString()} сум</b>`,
+              reply_markup: ADMIN_KEYBOARD
+            });
+
+            const card = renderUserProfileCard(targetUserId, targetUser);
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: card.text,
+              reply_markup: card.reply_markup
+            });
+            return res.status(200).json({ ok: true });
+          }
+        }
+
+        // 1. Search User Command & Button Handler
+        if (text === '🔍 Поиск пользователя' || text.startsWith('/find_user')) {
+          const query = text.replace('/find_user', '').replace('🔍 Поиск пользователя', '').trim();
+          if (query) {
+            const result = await searchUserByQuery(query);
+            if (result) {
+              const card = renderUserProfileCard(result.id, result.user);
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                parse_mode: 'HTML',
+                text: card.text,
+                reply_markup: card.reply_markup
+              });
+            } else {
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                parse_mode: 'HTML',
+                text: `❌ <b>Пользователь по запросу <code>${escapeHtml(query)}</code> не найден.</b>\nУбедитесь в правильности Telegram ID, @username или номера телефона.`,
+                reply_markup: ADMIN_KEYBOARD
+              });
+            }
+          } else {
+            let adminUser = (await kv.get(`user:${chatId}`)) || {};
+            adminUser.admin_step = 'ADMIN_SEARCH_USER';
+            await kv.set(`user:${chatId}`, adminUser);
+
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `🔍 <b>ПОИСК ПОЛЬЗОВАТЕЛЯ В БАЗЕ</b>\n\nВведите Telegram ID, @username, номер телефона или имя пользователя:`,
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "❌ Отмена", callback_data: "admin_cancel_step" }]
+                ]
+              }
+            });
+          }
+          return res.status(200).json({ ok: true });
+        }
+
+        // 2. Issue Ticket Command & Button Handler
+        if (text === '🎟 Выдать билет' || text.startsWith('/issue_ticket')) {
+          const query = text.replace('/issue_ticket', '').replace('🎟 Выдать билет', '').trim();
+          if (query) {
+            const result = await searchUserByQuery(query);
+            if (result) {
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                parse_mode: 'HTML',
+                text: `🎟 <b>ВЫБОР КАТЕГОРИИ БИЛЕТА</b>\n\n` +
+                  `Получатель: <b>${escapeHtml(result.user.name || 'Mehmon')}</b> (<code>${result.id}</code>)\n` +
+                  `Выберите тип выписываемого билета:`,
+                reply_markup: {
+                  inline_keyboard: [
+                    [{ text: "🎫 Standard", callback_data: `admin_issue_Standard_${result.id}` }],
+                    [{ text: "⭐ VIP", callback_data: `admin_issue_VIP_${result.id}` }],
+                    [{ text: "🏆 Winner (Конкурс)", callback_data: `admin_issue_Winner_${result.id}` }],
+                    [{ text: "❌ Отмена", callback_data: "admin_cancel_step" }]
+                  ]
+                }
+              });
+            } else {
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                parse_mode: 'HTML',
+                text: `❌ <b>Пользователь по запросу <code>${escapeHtml(query)}</code> не найден.</b>`,
+                reply_markup: ADMIN_KEYBOARD
+              });
+            }
+          } else {
+            let adminUser = (await kv.get(`user:${chatId}`)) || {};
+            adminUser.admin_step = 'ADMIN_ISSUE_TICKET_PROMPT';
+            await kv.set(`user:${chatId}`, adminUser);
+
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `🎟 <b>РУЧНАЯ ВЫДАЧА БИЛЕТА</b>\n\nВведите ID или @username пользователя, которому нужно выдать билет:`,
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "❌ Отмена", callback_data: "admin_cancel_step" }]
+                ]
+              }
+            });
+          }
+          return res.status(200).json({ ok: true });
+        }
 
         // Hide Keyboard Command
         if (text === '❌ Скрыть меню') {
@@ -1819,7 +2788,11 @@ export default async function handler(req, res) {
 
         // Standard registration start for new users
         let promoCodeFromPayload = null;
-        if (payload.startsWith('promo_')) {
+        let referrerIdFromPayload = null;
+
+        if (payload.startsWith('ref_')) {
+          referrerIdFromPayload = payload.replace('ref_', '').trim();
+        } else if (payload.startsWith('promo_')) {
           promoCodeFromPayload = payload.replace('promo_', '').trim().toUpperCase();
         } else if (payload && payload !== 'direct') {
           const allPromos = await getPromos();
@@ -1828,11 +2801,48 @@ export default async function handler(req, res) {
           }
         }
 
+        const isNewRegistration = !existingUser.chatId || !existingUser.first_started;
+        let referrerIdToSet = existingUser.referrer_id || null;
+
+        if (isNewRegistration && referrerIdFromPayload && referrerIdFromPayload !== String(chatId)) {
+          referrerIdToSet = referrerIdFromPayload;
+          try {
+            let referrer = (await kv.get(`user:${referrerIdFromPayload}`)) || {};
+            const currentRefBonus = typeof referrer.bonus_balance === 'number' ? referrer.bonus_balance : 0;
+            const currentInvited = typeof referrer.invited_count === 'number' ? referrer.invited_count : 0;
+            referrer.bonus_balance = currentRefBonus + REFERRAL_REGISTER_BONUS;
+            referrer.invited_count = currentInvited + 1;
+            await kv.set(`user:${referrerIdFromPayload}`, referrer);
+
+            const refLang = referrer.lang || 'ru';
+            let refMsg = '';
+            if (refLang === 'uz') {
+              refMsg = `🎉 <b>Do'stingiz taklif havolangiz orqali qo'shildi!</b> Sizga <b>+5 000 UZS</b> keshbek berildi.`;
+            } else if (refLang === 'en') {
+              refMsg = `🎉 <b>A friend joined via your link!</b> You earned <b>+5,000 UZS</b> cashback.`;
+            } else {
+              refMsg = `🎉 <b>Друг присоединился по вашей ссылке! Вам начислено +5 000 сум кешбэка.</b>`;
+            }
+            await callTelegram('sendMessage', {
+              chat_id: referrerIdFromPayload,
+              parse_mode: 'HTML',
+              text: refMsg
+            });
+          } catch (refRegErr) {
+            console.error('Failed to credit referrer on registration:', refRegErr);
+          }
+        }
+
         let user = {
           ...existingUser,
           chatId,
           step: existingUser.step || 'LANG',
           source: payload,
+          referrer_id: referrerIdToSet,
+          first_started: existingUser.first_started || new Date().toISOString(),
+          bonus_balance: typeof existingUser.bonus_balance === 'number' ? existingUser.bonus_balance : 0,
+          invited_count: typeof existingUser.invited_count === 'number' ? existingUser.invited_count : 0,
+          has_purchased: existingUser.has_purchased || false,
           promoCode: promoCodeFromPayload || existingUser.promoCode || null,
           payment_status: existingUser.payment_status || 'none'
         };
@@ -2625,49 +3635,241 @@ export default async function handler(req, res) {
       }
 
 
+      // Handle Admin Dynamic Action Callbacks (Search, Manual Issuance, Balance Edit, Revocation)
+      if (data.startsWith('admin_')) {
+        if (!(await isSuperAdmin(from, chatId))) {
+          await callTelegram('answerCallbackQuery', {
+            callback_query_id: id,
+            text: '🛑 Отказано в доступе. Действие доступно только администраторам.',
+            show_alert: true
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        await callTelegram('answerCallbackQuery', { callback_query_id: id });
+
+        if (data === 'admin_cancel_step') {
+          let u = (await kv.get(`user:${chatId}`)) || {};
+          u.admin_step = null;
+          await kv.set(`user:${chatId}`, u);
+
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: '❌ Действие отменено.',
+            reply_markup: ADMIN_KEYBOARD
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        if (data === 'admin_search_prompt') {
+          let u = (await kv.get(`user:${chatId}`)) || {};
+          u.admin_step = 'ADMIN_SEARCH_USER';
+          await kv.set(`user:${chatId}`, u);
+
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: `🔍 <b>ПОИСК ПОЛЬЗОВАТЕЛЯ В БАЗЕ</b>\n\nВведите Telegram ID, @username, номер телефона или имя пользователя:`,
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "❌ Отмена", callback_data: "admin_cancel_step" }]
+              ]
+            }
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        if (data.startsWith('admin_select_type_')) {
+          const targetId = data.replace('admin_select_type_', '');
+          let targetUser = (await kv.get(`user:${targetId}`)) || {};
+
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: `🎟 <b>ВЫБОР КАТЕГОРИИ БИЛЕТА</b>\n\n` +
+              `Получатель: <b>${escapeHtml(targetUser.name || 'Mehmon')}</b> (<code>${targetId}</code>)\n` +
+              `Выберите тип выписываемого билета:`,
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "🎫 Standard", callback_data: `admin_issue_Standard_${targetId}` }],
+                [{ text: "⭐ VIP", callback_data: `admin_issue_VIP_${targetId}` }],
+                [{ text: "🏆 Winner (Конкурс)", callback_data: `admin_issue_Winner_${targetId}` }],
+                [{ text: "❌ Отмена", callback_data: "admin_cancel_step" }]
+              ]
+            }
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        if (data.startsWith('admin_issue_')) {
+          const parts = data.replace('admin_issue_', '').split('_');
+          const ticketType = parts[0];
+          const targetId = parts[1];
+
+          try {
+            const { ticketId, seatInfo } = await issueManualTicket({
+              adminId: chatId,
+              recipientId: targetId,
+              ticketType
+            });
+
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `✅ <b>Билет (${escapeHtml(ticketType)}) успешно сгенерирован и отправлен пользователю <code>${targetId}</code>!</b>\n\n` +
+                `🎟 <b>ID Билета:</b> <code>${ticketId}</code>\n` +
+                `📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место`,
+              reply_markup: ADMIN_KEYBOARD
+            });
+
+            let freshTargetUser = (await kv.get(`user:${targetId}`)) || {};
+            const card = renderUserProfileCard(targetId, freshTargetUser);
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: card.text,
+              reply_markup: card.reply_markup
+            });
+          } catch (issueErr) {
+            console.error('Failed manual ticket issuance:', issueErr);
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `❌ <b>Ошибка при выдаче билета:</b> ${escapeHtml(issueErr.message)}`,
+              reply_markup: ADMIN_KEYBOARD
+            });
+          }
+          return res.status(200).json({ ok: true });
+        }
+
+        if (data.startsWith('admin_ask_balance_')) {
+          const targetId = data.replace('admin_ask_balance_', '');
+          let u = (await kv.get(`user:${chatId}`)) || {};
+          u.admin_step = `ADMIN_SET_BALANCE_${targetId}`;
+          await kv.set(`user:${chatId}`, u);
+
+          let targetUser = (await kv.get(`user:${targetId}`)) || {};
+          const currentBal = typeof targetUser.bonus_balance === 'number' ? targetUser.bonus_balance : 0;
+
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: `💰 <b>ИЗМЕНЕНИЕ БОНУСНОГО БАЛАНСА</b>\n\n` +
+              `Пользователь: <b>${escapeHtml(targetUser.name || 'Mehmon')}</b> (<code>${targetId}</code>)\n` +
+              `Текущий баланс: <b>${currentBal.toLocaleString()} сум</b>\n\n` +
+              `Введите новую сумму бонусного баланса (число в UZS):`,
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "❌ Отмена", callback_data: "admin_cancel_step" }]
+              ]
+            }
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        if (data.startsWith('admin_revoke_ticket_')) {
+          const targetId = data.replace('admin_revoke_ticket_', '');
+          let targetUser = (await kv.get(`user:${targetId}`)) || {};
+
+          if (!targetUser.ticketId) {
+            await callTelegram('sendMessage', {
+              chat_id: chatId,
+              parse_mode: 'HTML',
+              text: `⚠️ У пользователя <code>${targetId}</code> нет активного билета.`
+            });
+            return res.status(200).json({ ok: true });
+          }
+
+          const revokedTicketId = targetUser.ticketId;
+          const seatNum = targetUser.seatNumber;
+
+          targetUser.payment_status = 'cancelled';
+          targetUser.ticket_status = 'CANCELLED';
+          targetUser.ticketId = null;
+          await kv.set(`user:${targetId}`, targetUser);
+
+          let ticketObj = (await kv.get(`ticket:${revokedTicketId}`)) || {};
+          ticketObj.status = 'cancelled';
+          ticketObj.ticket_status = 'CANCELLED';
+          ticketObj.cancelled_at = new Date().toISOString();
+          ticketObj.cancelled_by = String(chatId);
+          await kv.set(`ticket:${revokedTicketId}`, ticketObj);
+
+          if (seatNum) {
+            let allocatedSeats = (await kv.get('allocated_seats')) || [];
+            allocatedSeats = allocatedSeats.filter(s => s !== seatNum);
+            await kv.set('allocated_seats', allocatedSeats);
+          }
+
+          await logAdminAuditAction({
+            adminId: chatId,
+            recipientId: targetId,
+            action: 'REVOKE_TICKET',
+            details: { ticketId: revokedTicketId, seatNumber: seatNum }
+          });
+
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: `🚫 <b>Билет <code>${revokedTicketId}</code> успешно отозван!</b>\nМесто №${seatNum || '?'} освобождено.`,
+            reply_markup: ADMIN_KEYBOARD
+          });
+
+          const card = renderUserProfileCard(targetId, targetUser);
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: card.text,
+            reply_markup: card.reply_markup
+          });
+          return res.status(200).json({ ok: true });
+        }
+      }
+
       // Handle Skip Promo Callback
       if (data === 'skip_promo') {
         let user = (await kv.get(`user:${chatId}`)) || {};
+        await callTelegram('answerCallbackQuery', { callback_query_id: id });
+        await sendBonusOfferOrPayment(chatId, user, BASE_TICKET_PRICE);
+        return res.status(200).json({ ok: true });
+      }
+
+      // Handle Use Bonus Cashback Callback
+      if (data === 'use_bonus') {
+        let user = (await kv.get(`user:${chatId}`)) || {};
+        const bonusDiscount = user.pending_bonus_discount || 0;
+        const priceAfterPromo = user.price_after_promo || BASE_TICKET_PRICE;
+        const finalPrice = Math.max(0, priceAfterPromo - bonusDiscount);
+
         user.step = 'PAYMENT';
         user.payment_status = 'pending_payment';
-        user.finalPrice = 49999;
+        user.used_bonus_amount = bonusDiscount;
+        user.finalPrice = finalPrice;
         await kv.set(`user:${chatId}`, user);
 
-        const lang = user.lang || 'ru';
-        const seatInfo = getSeatDetails(user.seatNumber || 1);
-        let msg = '';
-        if (lang === 'uz') {
-          msg = `✅ <b>Siz uchun navbatdagi joy ajratildi: #${seatInfo.seatNumber}</b>\n` +
-            `📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin\n\n` +
-            `⏳ <b>Eslatma:</b> To'lov chekini yuborish uchun sizda <b>15 daqiqa</b> bor.\n\n` +
-            `💳 <b>To'lov miqdori:</b> 49 999 UZS\n` +
-            `💳 <b>Karta raqami:</b> <code>5614 6822 1091 3879</code>\n` +
-            `👤 <b>Qabul qiluvchi:</b> Abidjanov Baxtiyor\n\n` +
-            `📸 To'lovni amalga oshirgach, <b>chek (скриншот)</b>ni shu yerga yuboring.`;
-        } else if (lang === 'en') {
-          msg = `✅ <b>Next available seat assigned to you: #${seatInfo.seatNumber}</b>\n` +
-            `📍 <b>Seat:</b> ${seatInfo.sectorName}, Row ${seatInfo.row} / Seat ${seatInfo.seat}\n\n` +
-            `⏳ <b>Notice:</b> You have <b>15 minutes</b> to send your payment receipt screenshot.\n\n` +
-            `💳 <b>Amount:</b> 49,999 UZS\n` +
-            `💳 <b>Card Number:</b> <code>5614 6822 1091 3879</code>\n` +
-            `👤 <b>Recipient:</b> Abidjanov Baxtiyor\n\n` +
-            `📸 After payment, please send the receipt screenshot here.`;
-        } else {
-          msg = `✅ <b>Вам выделено следующее место по очереди: №${seatInfo.seatNumber}</b>\n` +
-            `📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место\n\n` +
-            `⏳ <b>Внимание:</b> У вас есть <b>15 минут</b> на отправку чека об оплате.\n\n` +
-            `💳 <b>Сумма к оплате:</b> 49 999 UZS\n` +
-            `💳 <b>Номер карты:</b> <code>5614 6822 1091 3879</code>\n` +
-            `👤 <b>Получатель:</b> Abidjanov Baxtiyor\n\n` +
-            `📸 После оплаты отправьте <b>скриншот чека</b> в этот чат.`;
-        }
-
-        await callTelegram('sendMessage', {
-          chat_id: chatId,
-          parse_mode: 'HTML',
-          text: msg
+        await callTelegram('answerCallbackQuery', {
+          callback_query_id: id,
+          text: `🎁 Бонус -${bonusDiscount.toLocaleString()} UZS применён!`
         });
+
+        await sendPaymentInstructions(chatId, user);
+        return res.status(200).json({ ok: true });
+      }
+
+      // Handle Skip Bonus Callback
+      if (data === 'skip_bonus') {
+        let user = (await kv.get(`user:${chatId}`)) || {};
+        const priceAfterPromo = user.price_after_promo || BASE_TICKET_PRICE;
+
+        user.step = 'PAYMENT';
+        user.payment_status = 'pending_payment';
+        user.used_bonus_amount = 0;
+        user.finalPrice = priceAfterPromo;
+        await kv.set(`user:${chatId}`, user);
+
         await callTelegram('answerCallbackQuery', { callback_query_id: id });
+        await sendPaymentInstructions(chatId, user);
         return res.status(200).json({ ok: true });
       }
 
