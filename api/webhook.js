@@ -1264,101 +1264,101 @@ async function issueManualTicket({ adminId, recipientId, ticketType = 'Standard'
   return { ticketId, seatInfo };
 }
 
-  const qrUrl = `https://t.me/${BOT_USERNAME}?start=scan_${ticketId}`;
+const qrUrl = `https://t.me/${BOT_USERNAME}?start=scan_${ticketId}`;
 
-  let photoBuffer = null;
+let photoBuffer = null;
+try {
+  photoBuffer = await generateTicketQrImage(qrUrl);
+} catch (genErr) {
+  console.error('Ticket QR generation error:', genErr);
+}
+
+const userLang = user.lang || 'ru';
+let ticketCaption = '';
+
+if (userLang === 'uz') {
+  ticketCaption =
+    `🎉 <b>${promoCode ? 'Promo-kod orqali tasdiqlandi!' : "To'lov tasdiqlandi!"}</b>\n\n` +
+    `🎟️ <b>TEDxSergeli Specialized School — Rasmiy Elektron Chipta</b>\n\n` +
+    `👤 <b>Mehmon:</b> ${user.name || 'Mehmon'}\n` +
+    `📍 <b>Sektor:</b> ${seatInfo.sectorName}\n` +
+    `📐 <b>O'rin:</b> ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (Umumiy №${seatInfo.seatNumber})\n` +
+    `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n\n` +
+    `📅 <b>Sana:</b> 4-sentabr, 2026\n` +
+    `📍 <b>Manzil:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Ixtisoslashtirilgan Maktabi (Google Maps)</a>\n\n` +
+    `📌 <b>Kirish qoidalari (TEDx Rules):</b>\n` +
+    `• 1️⃣ Tadbir kunida ushbu QR-kodni nazoratchiga ko'rsating.\n` +
+    `• 2️⃣ Eshiklar soat 14:30 da yopiladi. Kechikmang!\n` +
+    `• 3️⃣ Har bir QR-kod faqat 1 marotaba kirish uchun amal qiladi.\n\n` +
+    `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
+} else if (userLang === 'en') {
+  ticketCaption =
+    `🎉 <b>${promoCode ? 'Confirmed via Promo Code!' : 'Payment confirmed!'}</b>\n\n` +
+    `🎟️ <b>TEDxSergeli Specialized School — Official Ticket</b>\n\n` +
+    `👤 <b>Guest:</b> ${user.name || 'Guest'}\n` +
+    `📍 <b>Sector:</b> ${seatInfo.sector === 5 ? '2nd Floor (Balcony)' : `Sector ${seatInfo.sector}`}\n` +
+    `📐 <b>Seat:</b> Row ${seatInfo.row} / Seat ${seatInfo.seat} (Total №${seatInfo.seatNumber})\n` +
+    `🔑 <b>Ticket ID:</b> <code>${ticketId}</code>\n\n` +
+    `📅 <b>Date:</b> September 4, 2026\n` +
+    `📍 <b>Location:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Specialized School (Google Maps)</a>\n\n` +
+    `📌 <b>Entrance Rules (TEDx Rules):</b>\n` +
+    `• 1️⃣ Show this QR code to the scanner on the day of the event.\n` +
+    `• 2️⃣ Doors close at 14:30. Please arrive on time!\n` +
+    `• 3️⃣ Each QR code is valid for 1 entry only.\n\n` +
+    `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
+} else {
+  ticketCaption =
+    `🎉 <b>${promoCode ? 'Подтверждено по промокоду!' : 'Оплата подтверждена!'}</b>\n\n` +
+    `🎟️ <b>TEDxSergeli Specialized School — Официальный электронный билет</b>\n\n` +
+    `👤 <b>Гость:</b> ${user.name || 'Гость'}\n` +
+    `📍 <b>Сектор:</b> ${seatInfo.sector === 5 ? '2-Этаж (Балкон)' : `Сектор ${seatInfo.sector}`}\n` +
+    `📐 <b>Место:</b> ${seatInfo.row}-ряд / ${seatInfo.seat}-место (Общий №${seatInfo.seatNumber})\n` +
+    `🔑 <b>ID Билета:</b> <code>${ticketId}</code>\n\n` +
+    `📅 <b>Дата:</b> 4 сентября 2026\n` +
+    `📍 <b>Адрес:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Специализированная школа Сергели (Google Maps)</a>\n\n` +
+    `📌 <b>Правила входа (Правила TEDx):</b>\n` +
+    `• 1️⃣ Покажите этот QR-код контролеру на входе в день мероприятия.\n` +
+    `• 2️⃣ Двери закрываются в 14:30. Пожалуйста, не опаздывайте!\n` +
+    `• 3️⃣ Каждый QR-код действителен только для 1 входа.\n\n` +
+    `ℹ️ <i>TEDxSergeli — независимое мероприятие, проводимое по лицензии TED.</i>`;
+}
+
+if (photoBuffer) {
+  await callTelegramPhoto(userId, photoBuffer, ticketCaption);
+} else {
+  await callTelegram('sendMessage', {
+    chat_id: userId,
+    parse_mode: 'HTML',
+    text: ticketCaption
+  });
+}
+
+if (ADMIN_CHAT_ID) {
+  const groupTicketCaption =
+    `🎟️ <b>YANGI CHIPTA ${promoCode ? `(PROMO-KOD: ${promoCode})` : 'BERILDI'}!</b>\n\n` +
+    `👤 <b>Ism:</b> ${user.name || 'Mehmon'}\n` +
+    `📍 <b>Joy:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
+    `📱 <b>Tel / Telegram:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
+    `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n` +
+    `💳 <b>Summa:</b> ${promoCode ? (user.finalPrice ? `${user.finalPrice.toLocaleString()} UZS` : '0 UZS (BEPUL)') : '49,999 UZS'}\n` +
+    `✅ <b>Tasdiqladi:</b> ${confirmedBy || (promoCode ? `Promo-kod (${promoCode})` : 'System')}`;
+
   try {
-    photoBuffer = await generateTicketQrImage(qrUrl);
-  } catch (genErr) {
-    console.error('Ticket QR generation error:', genErr);
-  }
-
-  const userLang = user.lang || 'ru';
-  let ticketCaption = '';
-
-  if (userLang === 'uz') {
-    ticketCaption =
-      `🎉 <b>${promoCode ? 'Promo-kod orqali tasdiqlandi!' : "To'lov tasdiqlandi!"}</b>\n\n` +
-      `🎟️ <b>TEDxSergeli Specialized School — Rasmiy Elektron Chipta</b>\n\n` +
-      `👤 <b>Mehmon:</b> ${user.name || 'Mehmon'}\n` +
-      `📍 <b>Sektor:</b> ${seatInfo.sectorName}\n` +
-      `📐 <b>O'rin:</b> ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (Umumiy №${seatInfo.seatNumber})\n` +
-      `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n\n` +
-      `📅 <b>Sana:</b> 4-sentabr, 2026\n` +
-      `📍 <b>Manzil:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Ixtisoslashtirilgan Maktabi (Google Maps)</a>\n\n` +
-      `📌 <b>Kirish qoidalari (TEDx Rules):</b>\n` +
-      `• 1️⃣ Tadbir kunida ushbu QR-kodni nazoratchiga ko'rsating.\n` +
-      `• 2️⃣ Eshiklar soat 14:30 da yopiladi. Kechikmang!\n` +
-      `• 3️⃣ Har bir QR-kod faqat 1 marotaba kirish uchun amal qiladi.\n\n` +
-      `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
-  } else if (userLang === 'en') {
-    ticketCaption =
-      `🎉 <b>${promoCode ? 'Confirmed via Promo Code!' : 'Payment confirmed!'}</b>\n\n` +
-      `🎟️ <b>TEDxSergeli Specialized School — Official Ticket</b>\n\n` +
-      `👤 <b>Guest:</b> ${user.name || 'Guest'}\n` +
-      `📍 <b>Sector:</b> ${seatInfo.sector === 5 ? '2nd Floor (Balcony)' : `Sector ${seatInfo.sector}`}\n` +
-      `📐 <b>Seat:</b> Row ${seatInfo.row} / Seat ${seatInfo.seat} (Total №${seatInfo.seatNumber})\n` +
-      `🔑 <b>Ticket ID:</b> <code>${ticketId}</code>\n\n` +
-      `📅 <b>Date:</b> September 4, 2026\n` +
-      `📍 <b>Location:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Specialized School (Google Maps)</a>\n\n` +
-      `📌 <b>Entrance Rules (TEDx Rules):</b>\n` +
-      `• 1️⃣ Show this QR code to the scanner on the day of the event.\n` +
-      `• 2️⃣ Doors close at 14:30. Please arrive on time!\n` +
-      `• 3️⃣ Each QR code is valid for 1 entry only.\n\n` +
-      `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
-  } else {
-    ticketCaption =
-      `🎉 <b>${promoCode ? 'Подтверждено по промокоду!' : 'Оплата подтверждена!'}</b>\n\n` +
-      `🎟️ <b>TEDxSergeli Specialized School — Официальный электронный билет</b>\n\n` +
-      `👤 <b>Гость:</b> ${user.name || 'Гость'}\n` +
-      `📍 <b>Сектор:</b> ${seatInfo.sector === 5 ? '2-Этаж (Балкон)' : `Сектор ${seatInfo.sector}`}\n` +
-      `📐 <b>Место:</b> ${seatInfo.row}-ряд / ${seatInfo.seat}-место (Общий №${seatInfo.seatNumber})\n` +
-      `🔑 <b>ID Билета:</b> <code>${ticketId}</code>\n\n` +
-      `📅 <b>Дата:</b> 4 сентября 2026\n` +
-      `📍 <b>Адрес:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Специализированная школа Сергели (Google Maps)</a>\n\n` +
-      `📌 <b>Правила входа (Правила TEDx):</b>\n` +
-      `• 1️⃣ Покажите этот QR-код контролеру на входе в день мероприятия.\n` +
-      `• 2️⃣ Двери закрываются в 14:30. Пожалуйста, не опаздывайте!\n` +
-      `• 3️⃣ Каждый QR-код действителен только для 1 входа.\n\n` +
-      `ℹ️ <i>TEDxSergeli — независимое мероприятие, проводимое по лицензии TED.</i>`;
-  }
-
-  if (photoBuffer) {
-    await callTelegramPhoto(userId, photoBuffer, ticketCaption);
-  } else {
-    await callTelegram('sendMessage', {
-      chat_id: userId,
-      parse_mode: 'HTML',
-      text: ticketCaption
-    });
-  }
-
-  if (ADMIN_CHAT_ID) {
-    const groupTicketCaption =
-      `🎟️ <b>YANGI CHIPTA ${promoCode ? `(PROMO-KOD: ${promoCode})` : 'BERILDI'}!</b>\n\n` +
-      `👤 <b>Ism:</b> ${user.name || 'Mehmon'}\n` +
-      `📍 <b>Joy:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
-      `📱 <b>Tel / Telegram:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
-      `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n` +
-      `💳 <b>Summa:</b> ${promoCode ? (user.finalPrice ? `${user.finalPrice.toLocaleString()} UZS` : '0 UZS (BEPUL)') : '49,999 UZS'}\n` +
-      `✅ <b>Tasdiqladi:</b> ${confirmedBy || (promoCode ? `Promo-kod (${promoCode})` : 'System')}`;
-
-    try {
-      if (photoBuffer) {
-        await callTelegramPhoto(ADMIN_CHAT_ID, photoBuffer, groupTicketCaption);
-      } else {
-        await callTelegram('sendMessage', {
-          chat_id: ADMIN_CHAT_ID,
-          parse_mode: 'HTML',
-          text: groupTicketCaption
-        });
-      }
-    } catch (dupErr) {
-      console.error('Failed to duplicate ticket to admin chat:', dupErr);
+    if (photoBuffer) {
+      await callTelegramPhoto(ADMIN_CHAT_ID, photoBuffer, groupTicketCaption);
+    } else {
+      await callTelegram('sendMessage', {
+        chat_id: ADMIN_CHAT_ID,
+        parse_mode: 'HTML',
+        text: groupTicketCaption
+      });
     }
+  } catch (dupErr) {
+    console.error('Failed to duplicate ticket to admin chat:', dupErr);
   }
+}
 
-  return { ticketId, seatInfo };
+return { ticketId, seatInfo };
 }
 
 // Helper to track user IDs for broadcasting
