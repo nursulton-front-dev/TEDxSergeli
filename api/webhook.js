@@ -1229,6 +1229,17 @@ async function issueTicketForUser({ userId, user, seatNumber, confirmedBy, promo
   user.confirmed_at = ticketData.confirmed_at;
   await kv.set(`user:${userId}`, user);
 
+  if (!isManualIssue) {
+    await sendIssuedTicket({
+      userId,
+      user,
+      promoCode,
+      confirmedBy,
+      ticketId,
+      seatInfo
+    });
+  }
+
   return { ticketId, seatInfo };
 }
 
@@ -1322,6 +1333,7 @@ async function issueManualTicket({ adminId, recipientId, ticketType = 'Standard'
   return { ticketId, seatInfo };
 }
 
+async function sendIssuedTicket({ userId, user, promoCode, confirmedBy, ticketId, seatInfo }) {
 const qrUrl = `https://t.me/${BOT_USERNAME}?start=scan_${ticketId}`;
 
 let photoBuffer = null;
