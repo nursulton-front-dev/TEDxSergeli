@@ -76,9 +76,8 @@ function getUserKeyboard(lang = 'ru') {
   if (lang === 'uz') {
     return {
       keyboard: [
-        [{ text: "🏆 Referallar tanlovi (Top-3)" }],
-        [{ text: "🎁 Referal dasturi / Cashback" }],
-        [{ text: "🎟 Mening chiptam" }, { text: "ℹ️ Ma'lumot" }]
+        [{ text: "🎁 Chiptaga pul ishlash (Bonuslar)" }, { text: "🏆 Tanlov (TOP-3)" }],
+        [{ text: "🎟 Chipta rasmiylashtirish (chegirma bilan)" }, { text: "📋 Dastur va Spikerlar" }]
       ],
       resize_keyboard: true,
       persistent: true
@@ -86,9 +85,8 @@ function getUserKeyboard(lang = 'ru') {
   } else if (lang === 'en') {
     return {
       keyboard: [
-        [{ text: "🏆 Referral Contest (Top-3)" }],
-        [{ text: "🎁 Referral / Cashback" }],
-        [{ text: "🎟 My Ticket" }, { text: "ℹ️ Help" }]
+        [{ text: "🎁 Earn a Ticket (Bonuses)" }, { text: "🏆 Contest (TOP-3)" }],
+        [{ text: "🎟 Get Ticket (Discounted)" }, { text: "📋 Program & Speakers" }]
       ],
       resize_keyboard: true,
       persistent: true
@@ -96,9 +94,8 @@ function getUserKeyboard(lang = 'ru') {
   }
   return {
     keyboard: [
-      [{ text: "🏆 Конкурс рефералов (Топ-3)" }],
-      [{ text: "🎁 Реферальная программа / Кешбэк" }],
-      [{ text: "🎟 Мой билет" }, { text: "ℹ️ Инструкция" }]
+      [{ text: "🎁 Заработать на билет (Бонусы)" }, { text: "🏆 Конкурс (ТОП-3)" }],
+      [{ text: "🎟 Оформить билет (со скидкой)" }, { text: "📋 Программа & Спикеры" }]
     ],
     resize_keyboard: true,
     persistent: true
@@ -278,6 +275,60 @@ async function sendReferralContestMessage(chatId, user) {
   });
 }
 
+async function sendWelcomeOnboarding(chatId, user) {
+  const userLang = user.lang || 'ru';
+  let text = '';
+
+  if (userLang === 'uz') {
+    text = `🔴 <b>TEDxSergeli Specialized School ga xush kelibsiz!</b>\n` +
+      `📅 <b>Sana:</b> 4-sentabr, 14:00\n\n` +
+      `💡 <b>Siz chiptani chegirma bilan yoki BEPUL olishingiz mumkin:</b>\n` +
+      `• Do'stlaringizni taklif qiling va har biri uchun <b>+5 000 so'm</b> oling!\n` +
+      `• Do'stingiz chipta xarid qilsa, <b>+10 000 so'm</b> keshbek oling.\n` +
+      `• Taklif qilinganlar soni bo'yicha <b>TOP-3</b> ishtirokchi tadbir arafasida bepul chipta oladi!\n\n` +
+      `Hoziroq do'stlaringizni taklif qilishni boshlang yoki quyidagi menyudan harakatni tanlang ⬇️`;
+  } else if (userLang === 'en') {
+    text = `🔴 <b>Welcome to TEDxSergeli Specialized School!</b>\n` +
+      `📅 <b>Date:</b> September 4, 14:00\n\n` +
+      `💡 <b>You can get a ticket at a discount or FOR FREE:</b>\n` +
+      `• Invite friends and get <b>+5,000 UZS</b> for each!\n` +
+      `• Get <b>+10,000 UZS</b> when your friend buys a ticket.\n` +
+      `• The <b>TOP-3</b> participants by number of referrals will get a free ticket before the event!\n\n` +
+      `Start inviting friends right now or choose an action from the menu below ⬇️`;
+  } else {
+    text = `🔴 <b>Добро пожаловать на TEDxSergeli Specialized School!</b>\n` +
+      `📅 <b>Дата:</b> 4 сентября, 14:00\n\n` +
+      `💡 <b>Ты можешь получить билет со скидкой или БЕСПЛАТНО:</b>\n` +
+      `• Приглашай друзей и получай <b>+5 000 сум</b> за каждого!\n` +
+      `• Получай <b>+10 000 сум</b>, если твой друг купит билет.\n` +
+      `• <b>ТОП-3</b> участника по количеству приглашенных получат бесплатный билет накануне ивента!\n\n` +
+      `Начни приглашать друзей прямо сейчас или выбери действие в меню ниже ⬇️`;
+  }
+
+  const photoUrl = `${PUBLIC_DOMAIN}/tedx-logo-white.png`;
+  const replyMarkup = getUserKeyboard(userLang);
+
+  try {
+    const res = await callTelegram('sendPhoto', {
+      chat_id: chatId,
+      photo: photoUrl,
+      caption: text,
+      parse_mode: 'HTML',
+      reply_markup: replyMarkup
+    });
+    if (res && res.ok) return res;
+  } catch (err) {
+    console.error('Failed to send onboarding photo banner, falling back to text:', err);
+  }
+
+  return await callTelegram('sendMessage', {
+    chat_id: chatId,
+    parse_mode: 'HTML',
+    text,
+    reply_markup: replyMarkup
+  });
+}
+
 async function sendReferralInfo(chatId, user) {
   const bonusBalance = typeof user.bonus_balance === 'number' ? user.bonus_balance : 0;
   const invitedCount = typeof user.invited_count === 'number' ? user.invited_count : 0;
@@ -286,30 +337,32 @@ async function sendReferralInfo(chatId, user) {
 
   let text = '';
   let shareText = '';
+  let btnShareText = '';
+
   if (userLang === 'uz') {
-    text = `🎁 <b>TEDxSergeli Referal dasturi:</b>\n` +
-      `• <b>+5 000 UZS</b> — har bir taklif qilingan do'stingiz uchun.\n` +
-      `• <b>+10 000 UZS</b> — do'stingiz chipta sotib olganida.\n\n` +
-      `💰 <b>Sizning keshbek balansingiz:</b> ${bonusBalance.toLocaleString()} UZS\n` +
+    text = `💰 <b>Sizning bonuslar balansingiz:</b> ${bonusBalance.toLocaleString()} UZS\n` +
       `👥 <b>Taklif qilingan do'stlar:</b> ${invitedCount}\n\n` +
-      `🔗 <b>Sizning havolangiz:</b> ${refLink}`;
+      `🔗 <b>Sizning shaxsiy havolangiz:</b>\n` +
+      `${refLink}\n\n` +
+      `ℹ️ <i>Siz xarid chog'ida chipta narxining 50% gacha qismini bonuslar bilan to'lashingiz mumkin!</i>`;
     shareText = "TEDxSergeli konferensiyasiga taklif qilaman! Ushbu havola orqali ro'yxatdan o'ting:";
+    btnShareText = "📤 Havolani do'stlarga yuborish";
   } else if (userLang === 'en') {
-    text = `🎁 <b>TEDxSergeli Referral Program:</b>\n` +
-      `• <b>+5,000 UZS</b> — for each invited friend.\n` +
-      `• <b>+10,000 UZS</b> — when your friend buys a ticket.\n\n` +
-      `💰 <b>Your cashback balance:</b> ${bonusBalance.toLocaleString()} UZS\n` +
+    text = `💰 <b>Your bonus balance:</b> ${bonusBalance.toLocaleString()} UZS\n` +
       `👥 <b>Invited friends:</b> ${invitedCount}\n\n` +
-      `🔗 <b>Your link:</b> ${refLink}`;
+      `🔗 <b>Your personal link:</b>\n` +
+      `${refLink}\n\n` +
+      `ℹ️ <i>You can pay up to 50% of the ticket price with bonuses upon purchase!</i>`;
     shareText = "Join TEDxSergeli event with me! Register via this link:";
+    btnShareText = "📤 Share link with friends";
   } else {
-    text = `🎁 <b>Реферальная программа TEDx:</b>\n` +
-      `• <b>+5 000 сум</b> — за каждого приглашенного друга.\n` +
-      `• <b>+10 000 сум</b> — когда друг покупает билет.\n\n` +
-      `💰 <b>Ваш баланс кешбэка:</b> ${bonusBalance.toLocaleString()} сум\n` +
+    text = `💰 <b>Ваш баланс бонусов:</b> ${bonusBalance.toLocaleString()} UZS\n` +
       `👥 <b>Приглашено друзей:</b> ${invitedCount}\n\n` +
-      `🔗 <b>Ваша ссылка:</b> ${refLink}`;
+      `🔗 <b>Ваша персональная ссылка:</b>\n` +
+      `${refLink}\n\n` +
+      `ℹ️ <i>Вы можете оплатить бонусами до 50% стоимости билета при покупке!</i>`;
     shareText = "Приглашаю на конференцию TEDxSergeli! Зарегистрируйся по моей ссылке:";
+    btnShareText = "📤 Отправить ссылку друзьям";
   }
 
   const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent(shareText)}`;
@@ -321,7 +374,70 @@ async function sendReferralInfo(chatId, user) {
     reply_markup: {
       inline_keyboard: [
         [
-          { text: userLang === 'uz' ? "🔗 Havolani ulashish" : userLang === 'en' ? "🔗 Share link" : "🔗 Поделиться ссылкой", url: shareUrl }
+          { text: btnShareText, url: shareUrl }
+        ]
+      ]
+    }
+  });
+}
+
+async function sendProgramAndSpeakersInfo(chatId, user) {
+  const userLang = user.lang || 'ru';
+  let text = '';
+  let btnWebText = '';
+
+  if (userLang === 'uz') {
+    text = `📋 <b>TEDxSergeli Dasturi va Spikerlar</b>\n\n` +
+      `📅 <b>Sana:</b> 4-sentabr 2026, 14:00\n` +
+      `📍 <b>Manzil:</b> TEDxSergeli Specialized School\n\n` +
+      `🕒 <b>Tadbirlar jadvali:</b>\n` +
+      `• <b>14:00 – 14:30</b> — Mehmonlarni kutib olish va ro'yxatdan o'tkazish (Pre-show)\n` +
+      `• <b>14:30 – 14:45</b> — TEDxSergeli tantanali ochilishi\n` +
+      `• <b>14:45 – 16:00</b> — I Sessiya: Spikerlar chiqishi\n` +
+      `• <b>16:00 – 16:45</b> — Kofe-breyk va netvorking ☕️\n` +
+      `• <b>16:45 – 18:00</b> — II Sessiya: Spikerlar chiqishi\n` +
+      `• <b>18:00 – 18:30</b> — Yopilish marosimi va fotosessiya 📸\n\n` +
+      `🌐 <i>Barcha spikerlar va tadbir haqida batafsil rasmiy saytimizda:</i>\n` +
+      `https://tedxsergelispecializedschool.uz/`;
+    btnWebText = "🌐 Rasmiy saytga o'tish";
+  } else if (userLang === 'en') {
+    text = `📋 <b>TEDxSergeli Program & Speakers</b>\n\n` +
+      `📅 <b>Date:</b> September 4, 2026, 14:00\n` +
+      `📍 <b>Location:</b> TEDxSergeli Specialized School\n\n` +
+      `🕒 <b>Event Timeline:</b>\n` +
+      `• <b>14:00 – 14:30</b> — Guest Registration & Pre-show\n` +
+      `• <b>14:30 – 14:45</b> — Grand Opening Ceremony\n` +
+      `• <b>14:45 – 16:00</b> — Session I: Speaker Talks\n` +
+      `• <b>16:00 – 16:45</b> — Coffee Break & Networking ☕️\n` +
+      `• <b>16:45 – 18:00</b> — Session II: Speaker Talks\n` +
+      `• <b>18:00 – 18:30</b> — Closing Ceremony & Photo Session 📸\n\n` +
+      `🌐 <i>Learn more about speakers and event details on our official website:</i>\n` +
+      `https://tedxsergelispecializedschool.uz/`;
+    btnWebText = "🌐 Visit Official Website";
+  } else {
+    text = `📋 <b>Программа & Спикеры TEDxSergeli</b>\n\n` +
+      `📅 <b>Дата:</b> 4 сентября 2026, 14:00\n` +
+      `📍 <b>Локация:</b> TEDxSergeli Specialized School\n\n` +
+      `🕒 <b>Таймлайн мероприятия:</b>\n` +
+      `• <b>14:00 – 14:30</b> — Сбор гостей и регистрация (Pre-show)\n` +
+      `• <b>14:30 – 14:45</b> — Торжественное открытие TEDxSergeli\n` +
+      `• <b>14:45 – 16:00</b> — I Сессия: Выступления спикеров\n` +
+      `• <b>16:00 – 16:45</b> — Coffee Break & Networking ☕️\n` +
+      `• <b>16:45 – 18:00</b> — II Сессия: Выступления спикеров\n` +
+      `• <b>18:00 – 18:30</b> — Церемония закрытия & Фотосессия 📸\n\n` +
+      `🌐 <i>Подробная информация о спикерах на официальном сайте:</i>\n` +
+      `https://tedxsergelispecializedschool.uz/`;
+    btnWebText = "🌐 Перейти на сайт TEDxSergeli";
+  }
+
+  return await callTelegram('sendMessage', {
+    chat_id: chatId,
+    parse_mode: 'HTML',
+    text,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: btnWebText, url: "https://tedxsergelispecializedschool.uz/" }
         ]
       ]
     }
@@ -399,31 +515,29 @@ async function sendBonusOfferOrPayment(chatId, user, priceAfterPromo) {
     let text = '';
     let btnUseText = '';
     let btnSkipText = '';
+    const finalPrice = Math.max(0, priceAfterPromo - applicableBonus);
 
     if (lang === 'uz') {
-      text = `💰 <b>Sizda jamg'arilgan bonuslar bor!</b>\n\n` +
-        `Sizning keshbek balansingiz: <b>${currentBonus.toLocaleString()} UZS</b>\n` +
-        `Chipta narxining ${MAX_BONUS_COVERAGE_PERCENT}% gacha qismini bonus bilan to'lashingiz mumkin: <b>-${applicableBonus.toLocaleString()} UZS</b>\n\n` +
-        `Chipta narxi: <s>${priceAfterPromo.toLocaleString()} UZS</s> ➡️ <b>${(priceAfterPromo - applicableBonus).toLocaleString()} UZS</b>\n\n` +
-        `Chegirma uchun bonuslarni ishlatasizmi?`;
-      btnUseText = `🎁 Bonuslarni ishlatish (-${applicableBonus.toLocaleString()} UZS)`;
-      btnSkipText = `❌ Bonussiz davom etish`;
+      text = `🎟 <b>Chipta rasmiylashtirish:</b>\n` +
+        `Standard chipta narxi: <b>${priceAfterPromo.toLocaleString()} UZS</b>\n\n` +
+        `Sizda <b>${currentBonus.toLocaleString()}</b> bonus bor. Siz <b>${applicableBonus.toLocaleString()} UZS</b> chegirma qo'llashingiz mumkin.\n` +
+        `To'lov uchun: <b>${finalPrice.toLocaleString()} UZS</b>.`;
+      btnUseText = `🎁 Bonuslarni qo'llash va to'lash`;
+      btnSkipText = `💳 Yechib olmasdan to'lash`;
     } else if (lang === 'en') {
-      text = `💰 <b>You have accumulated cashback bonuses!</b>\n\n` +
-        `Your balance: <b>${currentBonus.toLocaleString()} UZS</b>\n` +
-        `You can cover up to ${MAX_BONUS_COVERAGE_PERCENT}% of ticket price: <b>-${applicableBonus.toLocaleString()} UZS</b>\n\n` +
-        `Ticket price: <s>${priceAfterPromo.toLocaleString()} UZS</s> ➡️ <b>${(priceAfterPromo - applicableBonus).toLocaleString()} UZS</b>\n\n` +
-        `Apply bonuses for discount?`;
-      btnUseText = `🎁 Apply bonuses (-${applicableBonus.toLocaleString()} UZS)`;
-      btnSkipText = `❌ Continue without bonuses`;
+      text = `🎟 <b>Ticket Checkout:</b>\n` +
+        `Standard ticket price: <b>${priceAfterPromo.toLocaleString()} UZS</b>\n\n` +
+        `You have <b>${currentBonus.toLocaleString()}</b> bonuses. You can apply a discount of <b>${applicableBonus.toLocaleString()} UZS</b>.\n` +
+        `Total to pay: <b>${finalPrice.toLocaleString()} UZS</b>.`;
+      btnUseText = `🎁 Apply bonuses and pay`;
+      btnSkipText = `💳 Pay without bonuses`;
     } else {
-      text = `💰 <b>У вас есть накопительные бонусы!</b>\n\n` +
-        `Ваш баланс кешбэка: <b>${currentBonus.toLocaleString()} UZS</b>\n` +
-        `Вы можете списать до ${MAX_BONUS_COVERAGE_PERCENT}% от стоимости билета: <b>-${applicableBonus.toLocaleString()} UZS</b>\n\n` +
-        `Стоимость билета: <s>${priceAfterPromo.toLocaleString()} UZS</s> ➡️ <b>${(priceAfterPromo - applicableBonus).toLocaleString()} UZS</b>\n\n` +
-        `Применить бонусы для скидки?`;
-      btnUseText = `🎁 Использовать бонусы (-${applicableBonus.toLocaleString()} сум)`;
-      btnSkipText = `❌ Без бонусов`;
+      text = `🎟 <b>Оформление билета:</b>\n` +
+        `Стандартная цена билета: <b>${priceAfterPromo.toLocaleString()} UZS</b>\n\n` +
+        `У вас есть <b>${currentBonus.toLocaleString()}</b> бонусов. Вы можете применить скидку <b>${applicableBonus.toLocaleString()} сум</b>.\n` +
+        `К оплате: <b>${finalPrice.toLocaleString()} сум</b>.`;
+      btnUseText = `🎁 Применить бонусы и оплатить`;
+      btnSkipText = `💳 Оплатить без списания`;
     }
 
     return await callTelegram('sendMessage', {
@@ -1650,7 +1764,7 @@ export default async function handler(req, res) {
       // === REFERRAL CONTEST & LEADERBOARD HANDLER ===
       if (text && (
         /^\/(?:contest|leaderboard|top|contest_info)(?:@[A-Za-z0-9_]+)?$/iu.test(normalizeActionText(text)) ||
-        /^(?:🏆\s*)?(?:конкурс рефералов|referallar tanlovi|referral contest)/iu.test(normalizeActionText(text))
+        /^(?:🏆\s*)?(?:конкурс \(топ-3\)|конкурс рефералов|конкурс|топ-3|referallar tanlovi|tanlov \(top-3\)|referral contest|contest \(top-3\))/iu.test(normalizeActionText(text))
       )) {
         let user = (await kv.get(`user:${chatId}`)) || {};
         await sendReferralContestMessage(chatId, user);
@@ -1660,10 +1774,76 @@ export default async function handler(req, res) {
       // === REFERRAL & CASHBACK INFO HANDLER ===
       if (text && (
         /^\/(?:referral|bonus|cashback|ref)(?:@[A-Za-z0-9_]+)?$/iu.test(normalizeActionText(text)) ||
-        /^(?:🎁\s*)?(?:реферальная программа|кешбэк|referal|referral)/iu.test(normalizeActionText(text))
+        /^(?:🎁\s*)?(?:заработать на билет \(бонусы\)|заработать на билет|бонусы|реферальная программа|кешбэк|referal|referral|chiptaga pul ishlash \(bonuslar\)|chiptaga pul ishlash|earn a ticket \(bonuses\)|earn a ticket)/iu.test(normalizeActionText(text))
       )) {
         let user = (await kv.get(`user:${chatId}`)) || {};
         await sendReferralInfo(chatId, user);
+        return res.status(200).json({ ok: true });
+      }
+
+      // === PROGRAM & SPEAKERS HANDLER ===
+      if (text && (
+        /^\/(?:program|schedule|speakers)(?:@[A-Za-z0-9_]+)?$/iu.test(normalizeActionText(text)) ||
+        /^(?:📋\s*)?(?:программа & спикеры|программа и спикеры|программа|спикеры|dastur va spikerlar|dastur va spiker|dastur|program & speakers|program)/iu.test(normalizeActionText(text))
+      )) {
+        let user = (await kv.get(`user:${chatId}`)) || {};
+        await sendProgramAndSpeakersInfo(chatId, user);
+        return res.status(200).json({ ok: true });
+      }
+
+      // === TICKET CHECKOUT HANDLER ===
+      if (text && (
+        /^\/(?:buy|ticket|checkout)(?:@[A-Za-z0-9_]+)?$/iu.test(normalizeActionText(text)) ||
+        /^(?:🎟\s*)?(?:оформить билет \(со скидкой\)|оформить билет|купить билет|chipta rasmiylashtirish \(chegirma bilan\)|chipta rasmiylashtirish|get ticket \(discounted\)|get ticket)/iu.test(normalizeActionText(text))
+      )) {
+        let user = (await kv.get(`user:${chatId}`)) || {};
+        if (user.payment_status === 'confirmed' && user.ticketId) {
+          const userLang = user.lang || 'ru';
+          const ticket = await kv.get(`ticket:${user.ticketId}`);
+          const seatInfo = getSeatDetails(user.seatNumber || (ticket ? ticket.seatNumber : 1));
+          let msg = userLang === 'uz'
+            ? `🎉 <b>Sizda faol TEDxSergeli elektron chiptangiz bor.</b>\n\n🎟 <b>Chipta ID:</b> <code>${user.ticketId}</code>\n📍 <b>O'rin:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin\n👤 <b>Ism:</b> ${user.name || 'Mehmon'}`
+            : `🎉 <b>У вас есть активный электронный билет TEDxSergeli.</b>\n\n🎟 <b>ID Билета:</b> <code>${user.ticketId}</code>\n📍 <b>Место:</b> ${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место\n👤 <b>Имя:</b> ${user.name || 'Гость'}`;
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: msg,
+            reply_markup: getUserKeyboard(userLang)
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        if (!user.name) {
+          user.step = 'NAME';
+          await kv.set(`user:${chatId}`, user);
+          const lang = user.lang || 'ru';
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            parse_mode: 'HTML',
+            text: texts.askName[lang]
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        if (!user.phone) {
+          user.step = 'PHONE';
+          await kv.set(`user:${chatId}`, user);
+          const lang = user.lang || 'ru';
+          await callTelegram('sendMessage', {
+            chat_id: chatId,
+            text: texts.askPhone[lang],
+            reply_markup: {
+              keyboard: [
+                [{ text: texts.btnShareContact[lang], request_contact: true }]
+              ],
+              resize_keyboard: true,
+              one_time_keyboard: true
+            }
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        await sendBonusOfferOrPayment(chatId, user, BASE_TICKET_PRICE);
         return res.status(200).json({ ok: true });
       }
 
@@ -2967,18 +3147,7 @@ export default async function handler(req, res) {
           });
         }
 
-        await callTelegram('sendMessage', {
-          chat_id: chatId,
-          parse_mode: 'HTML',
-          text: texts.welcome,
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: "🇺🇿 O'zbekcha", callback_data: `lang_uz` }],
-              [{ text: "🇷🇺 Русский", callback_data: `lang_ru` }],
-              [{ text: "🇬🇧 English", callback_data: `lang_en` }]
-            ]
-          }
-        });
+        await sendWelcomeOnboarding(chatId, user);
         return res.status(200).json({ ok: true });
       }
 
@@ -3375,27 +3544,25 @@ export default async function handler(req, res) {
       if (data.startsWith('lang_')) {
         const selectedLang = data.split('_')[1];
 
-        let user = {
-          chatId,
-          lang: selectedLang,
-          step: 'NAME'
-        };
+        let user = (await kv.get(`user:${chatId}`)) || {};
+        user.chatId = chatId;
+        user.lang = selectedLang;
         await kv.set(`user:${chatId}`, user);
 
-        await callTelegram('editMessageText', {
-          chat_id: chatId,
-          message_id: message.message_id,
-          parse_mode: 'HTML',
+        await callTelegram('answerCallbackQuery', {
+          callback_query_id: id,
           text: "✅ " + (selectedLang === 'uz' ? "Til tanlandi" : selectedLang === 'en' ? "Language selected" : "Язык выбран")
         });
 
-        await callTelegram('sendMessage', {
-          chat_id: chatId,
-          parse_mode: 'HTML',
-          text: texts.askName[selectedLang]
-        });
+        await sendWelcomeOnboarding(chatId, user);
+        return res.status(200).json({ ok: true });
+      }
 
+      // Handle Show Referral Info Callback
+      if (data === 'show_ref_info') {
+        let user = (await kv.get(`user:${chatId}`)) || {};
         await callTelegram('answerCallbackQuery', { callback_query_id: id });
+        await sendReferralInfo(chatId, user);
         return res.status(200).json({ ok: true });
       }
 
