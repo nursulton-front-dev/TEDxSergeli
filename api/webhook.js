@@ -701,6 +701,7 @@ async function getOccupiedSeatsMap() {
             phone: u.phone || '',
             ticketId: u.ticketId || '',
             ticketType: u.ticket_type || 'Standard',
+            isManualIssue: !!u.is_manual_issue || u.ticket_status === 'MANUAL',
             paymentStatus: u.payment_status || 'unknown',
             isCheckedIn: !!u.is_checked_in
           };
@@ -725,11 +726,15 @@ async function getOccupiedSeatsMap() {
               phone: t.phone || '',
               ticketId: t.id || tid,
               ticketType: t.ticket_type || 'Standard',
+              isManualIssue: !!t.is_manual_issue || t.issued_by != null,
               paymentStatus: t.status || 'paid',
               isCheckedIn: t.status === 'used' || !!t.is_checked_in,
               checkedInAt: t.tashkentTime || t.used_at || null
             };
           } else {
+            if (t.is_manual_issue || t.issued_by != null) {
+              seatMap[sNum].isManualIssue = true;
+            }
             if (t.status === 'used' || t.is_checked_in) {
               seatMap[sNum].isCheckedIn = true;
               seatMap[sNum].checkedInAt = t.tashkentTime || t.used_at || null;
@@ -803,14 +808,15 @@ async function sendOccupiedSeatsOverview(chatId, sectorFilter = 'ALL', messageId
     if (seatObj) {
       const details = getSeatDetails(s);
       const icon = seatObj.type === 'CONFIRMED' ? (seatObj.isCheckedIn ? '🟢' : '🔴') : '🟡';
+      const typeLabel = seatObj.isManualIssue ? '🎁 ВЫДАН (ГОСТЬ/СПИКЕР)' : '💳 ОПЛАЧЕН';
       const statusText = seatObj.type === 'CONFIRMED'
-        ? (seatObj.isCheckedIn ? 'ВШЁЛ (Checked In)' : 'КУПЛЕН')
+        ? (seatObj.isCheckedIn ? `ВШЁЛ [${typeLabel}]` : typeLabel)
         : 'ВРЕМЕННЫЙ HOLD';
 
       let line = `${icon} <b>Место №${s}</b> (${details.sectorName}, ${details.row}-ряд / ${details.seat}-место)\n`;
       line += `   👤 <b>Гость:</b> ${escapeHtml(seatObj.guest)} ${seatObj.username ? `(${escapeHtml(seatObj.username)})` : ''}\n`;
       if (seatObj.phone) line += `   📱 <b>Тел:</b> <code>${escapeHtml(seatObj.phone)}</code>\n`;
-      if (seatObj.ticketId) line += `   🎟 <b>Билет ID:</b> <code>${seatObj.ticketId}</code> [${statusText}]\n`;
+      if (seatObj.ticketId) line += `   🎟 <b>Билет:</b> <code>${seatObj.ticketId}</code> [${statusText}]\n`;
       else line += `   ℹ️ <b>Статус:</b> ${statusText}\n`;
 
       entries.push(line);
@@ -2801,17 +2807,12 @@ export default async function handler(req, res) {
 
         // Statistics & Live Monitoring (Idea 4)
         if (text === '/stats' || text.includes('Статистика') || text === '/live_stats') {
-          const totalSold = parseInt((await kv.get('total_tickets_sold')) || 0, 10);
           const allocatedSeats = (await kv.get('allocated_seats')) || [];
           const allTicketIds = (await kv.get('all_ticket_ids')) || [];
           const allUserIds = (await kv.get('all_user_ids')) || [];
           const occupiedSeats = await getActiveOccupiedSeats();
 
-          const displaySold = Math.max(
-            totalSold,
-            Array.isArray(allocatedSeats) ? allocatedSeats.length : 0,
-            Array.isArray(allTicketIds) ? allTicketIds.length : 0
-          );
+          const displaySold = Array.isArray(allocatedSeats) ? allocatedSeats.length : 0;
 
           let scannedCount = 0;
           for (const tid of allTicketIds) {
