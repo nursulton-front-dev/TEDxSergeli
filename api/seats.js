@@ -54,6 +54,84 @@ async function getActiveOccupiedSeats() {
   return active;
 }
 
+// Helper to fetch seat occupant details for admin and map inspector
+async function getSeatsDetailsMap() {
+  const allUserIds = (await kv.get('all_user_ids')) || [];
+  const allTicketIds = (await kv.get('all_ticket_ids')) || [];
+  const activeOccupied = await getActiveOccupiedSeats();
+
+  const detailsMap = {};
+
+  if (Array.isArray(allUserIds)) {
+    for (const uid of allUserIds) {
+      try {
+        const u = await kv.get(`user:${uid}`);
+        if (u && u.seatNumber) {
+          detailsMap[u.seatNumber] = {
+            seatNumber: u.seatNumber,
+            type: u.payment_status === 'confirmed' ? 'CONFIRMED' : 'PENDING',
+            guest: u.name || 'Mehmon',
+            username: u.username ? `@${u.username.replace(/^@/, '')}` : '',
+            phone: u.phone || '',
+            ticketId: u.ticketId || '',
+            ticketType: u.ticket_type || 'Standard',
+            paymentStatus: u.payment_status || 'unknown',
+            isCheckedIn: !!u.is_checked_in
+          };
+        }
+      } catch (_e) {}
+    }
+  }
+
+  if (Array.isArray(allTicketIds)) {
+    for (const tid of allTicketIds) {
+      try {
+        const t = await kv.get(`ticket:${tid}`);
+        if (t && (t.seatNumber || t.seat)) {
+          const sNum = t.seatNumber || t.seat;
+          if (!detailsMap[sNum]) {
+            detailsMap[sNum] = {
+              seatNumber: sNum,
+              type: 'CONFIRMED',
+              guest: t.name || 'Mehmon',
+              username: t.username ? `@${t.username.replace(/^@/, '')}` : '',
+              phone: t.phone || '',
+              ticketId: t.id || tid,
+              ticketType: t.ticket_type || 'Standard',
+              paymentStatus: t.status || 'paid',
+              isCheckedIn: t.status === 'used' || !!t.is_checked_in,
+              checkedInAt: t.tashkentTime || t.used_at || null
+            };
+          } else {
+            if (t.status === 'used' || t.is_checked_in) {
+              detailsMap[sNum].isCheckedIn = true;
+              detailsMap[sNum].checkedInAt = t.tashkentTime || t.used_at || null;
+            }
+            if (t.id && !detailsMap[sNum].ticketId) {
+              detailsMap[sNum].ticketId = t.id;
+            }
+          }
+        }
+      } catch (_e) {}
+    }
+  }
+
+  if (Array.isArray(activeOccupied)) {
+    for (const hold of activeOccupied) {
+      if (hold && hold.seat && !detailsMap[hold.seat]) {
+        detailsMap[hold.seat] = {
+          seatNumber: hold.seat,
+          type: 'HOLD',
+          guest: 'Band qilinmoqda (Hold)',
+          expiresAt: hold.expiresAt
+        };
+      }
+    }
+  }
+
+  return detailsMap;
+}
+
 export default async function handler(req, res) {
   // CORS Headers
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -82,9 +160,16 @@ export default async function handler(req, res) {
         ])
       );
 
+      const { details, admin } = req.query || {};
+      let seatsDetails = undefined;
+      if (details === 'true' || admin === 'true' || details === '1' || admin === '1') {
+        seatsDetails = await getSeatsDetailsMap();
+      }
+
       return res.status(200).json({
         ok: true,
         occupiedSeats: allOccupied,
+        seatsDetails,
         totalSold: parseInt(totalSold, 10) || allOccupied.length,
         totalCapacity: 100
       });

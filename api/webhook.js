@@ -622,6 +622,7 @@ function isInstructionRequest(value) {
 function isAdminMenuButton(value) {
   const norm = normalizeActionText(value);
   return /^(?:📊\s*)?(?:статистика|live_stats|stats)$/iu.test(norm) ||
+    /^(?:💺\s*)?(?:занятые места|места|seats|occupied_seats|joylar)$/iu.test(norm) ||
     /^(?:🏷\s*)?(?:промокоды|promos)$/iu.test(norm) ||
     /^(?:📋\s*)?(?:контролеры|scanners)$/iu.test(norm) ||
     /^(?:👑\s*)?(?:админы|admins)$/iu.test(norm) ||
@@ -677,12 +678,202 @@ function isPromoManagementCallback(data) {
     data.startsWith('confirm_del_');
 }
 
+// Occupied Seats Admin Viewer Helpers
+async function getOccupiedSeatsMap() {
+  const allocatedSeats = (await kv.get('allocated_seats')) || [];
+  const activeOccupied = await getActiveOccupiedSeats();
+  const allUserIds = (await kv.get('all_user_ids')) || [];
+  const allTicketIds = (await kv.get('all_ticket_ids')) || [];
+
+  const seatMap = {};
+
+  if (Array.isArray(allUserIds)) {
+    for (const uid of allUserIds) {
+      try {
+        const u = await kv.get(`user:${uid}`);
+        if (u && u.seatNumber) {
+          seatMap[u.seatNumber] = {
+            seatNumber: u.seatNumber,
+            type: u.payment_status === 'confirmed' ? 'CONFIRMED' : 'PENDING',
+            userId: uid,
+            guest: u.name || 'Mehmon',
+            username: u.username ? `@${u.username.replace(/^@/, '')}` : '',
+            phone: u.phone || '',
+            ticketId: u.ticketId || '',
+            ticketType: u.ticket_type || 'Standard',
+            paymentStatus: u.payment_status || 'unknown',
+            isCheckedIn: !!u.is_checked_in
+          };
+        }
+      } catch (_e) {}
+    }
+  }
+
+  if (Array.isArray(allTicketIds)) {
+    for (const tid of allTicketIds) {
+      try {
+        const t = await kv.get(`ticket:${tid}`);
+        if (t && (t.seatNumber || t.seat)) {
+          const sNum = t.seatNumber || t.seat;
+          if (!seatMap[sNum]) {
+            seatMap[sNum] = {
+              seatNumber: sNum,
+              type: 'CONFIRMED',
+              userId: t.userId || '',
+              guest: t.name || 'Mehmon',
+              username: t.username ? `@${t.username.replace(/^@/, '')}` : '',
+              phone: t.phone || '',
+              ticketId: t.id || tid,
+              ticketType: t.ticket_type || 'Standard',
+              paymentStatus: t.status || 'paid',
+              isCheckedIn: t.status === 'used' || !!t.is_checked_in,
+              checkedInAt: t.tashkentTime || t.used_at || null
+            };
+          } else {
+            if (t.status === 'used' || t.is_checked_in) {
+              seatMap[sNum].isCheckedIn = true;
+              seatMap[sNum].checkedInAt = t.tashkentTime || t.used_at || null;
+            }
+            if (t.id && !seatMap[sNum].ticketId) {
+              seatMap[sNum].ticketId = t.id;
+            }
+          }
+        }
+      } catch (_e) {}
+    }
+  }
+
+  if (Array.isArray(activeOccupied)) {
+    for (const hold of activeOccupied) {
+      if (hold && hold.seat && !seatMap[hold.seat]) {
+        seatMap[hold.seat] = {
+          seatNumber: hold.seat,
+          type: 'HOLD',
+          expiresAt: hold.expiresAt,
+          guest: 'Band qilinmoqda (Hold)',
+          username: '',
+          phone: '',
+          ticketId: '',
+          paymentStatus: 'holding'
+        };
+      }
+    }
+  }
+
+  if (Array.isArray(allocatedSeats)) {
+    for (const sNum of allocatedSeats) {
+      if (!seatMap[sNum]) {
+        seatMap[sNum] = {
+          seatNumber: sNum,
+          type: 'CONFIRMED',
+          guest: 'Noma\'lum mehmon',
+          paymentStatus: 'confirmed'
+        };
+      }
+    }
+  }
+
+  return seatMap;
+}
+
+async function sendOccupiedSeatsOverview(chatId, sectorFilter = 'ALL', messageId = null) {
+  const seatMap = await getOccupiedSeatsMap();
+  const totalOccupiedCount = Object.keys(seatMap).length;
+
+  let headerText = `💺 <b>TEDxSergeli ЗАНЯТЫЕ МЕСТА / BAND JOYLAR</b>\n\n` +
+    `📊 <b>Статистика:</b>\n` +
+    `• Всего занято / забронировано: <b>${totalOccupiedCount} / 100</b>\n` +
+    `• Свободно: <b>${100 - totalOccupiedCount} / 100</b>\n\n`;
+
+  let entries = [];
+  let startSeat = 1;
+  let endSeat = 100;
+  let sectorTitle = "Все секторы (1-100)";
+
+  if (sectorFilter === '1') { startSeat = 1; endSeat = 24; sectorTitle = "1-Сектор (1-24)"; }
+  else if (sectorFilter === '2') { startSeat = 25; endSeat = 48; sectorTitle = "2-Сектор (25-48)"; }
+  else if (sectorFilter === '3') { startSeat = 49; endSeat = 72; sectorTitle = "3-Сектор (49-72)"; }
+  else if (sectorFilter === '4') { startSeat = 73; endSeat = 96; sectorTitle = "4-Сектор (73-96)"; }
+  else if (sectorFilter === '5') { startSeat = 97; endSeat = 100; sectorTitle = "Балкон (97-100)"; }
+
+  headerText += `📍 <b>Фильтр: ${sectorTitle}</b>\n\n`;
+
+  for (let s = startSeat; s <= endSeat; s++) {
+    const seatObj = seatMap[s];
+    if (seatObj) {
+      const details = getSeatDetails(s);
+      const icon = seatObj.type === 'CONFIRMED' ? (seatObj.isCheckedIn ? '🟢' : '🔴') : '🟡';
+      const statusText = seatObj.type === 'CONFIRMED'
+        ? (seatObj.isCheckedIn ? 'ВШЁЛ (Checked In)' : 'КУПЛЕН')
+        : 'ВРЕМЕННЫЙ HOLD';
+
+      let line = `${icon} <b>Место №${s}</b> (${details.sectorName}, ${details.row}-ряд / ${details.seat}-место)\n`;
+      line += `   👤 <b>Гость:</b> ${escapeHtml(seatObj.guest)} ${seatObj.username ? `(${escapeHtml(seatObj.username)})` : ''}\n`;
+      if (seatObj.phone) line += `   📱 <b>Тел:</b> <code>${escapeHtml(seatObj.phone)}</code>\n`;
+      if (seatObj.ticketId) line += `   🎟 <b>Билет ID:</b> <code>${seatObj.ticketId}</code> [${statusText}]\n`;
+      else line += `   ℹ️ <b>Статус:</b> ${statusText}\n`;
+
+      entries.push(line);
+    }
+  }
+
+  let bodyText = headerText;
+  if (entries.length === 0) {
+    bodyText += `<i>В этом диапазоне пока нет занятых мест.</i>`;
+  } else {
+    bodyText += entries.join('\n\n');
+  }
+
+  if (bodyText.length > 3900) {
+    bodyText = bodyText.substring(0, 3850) + '\n\n<i>... Из-за большого объёма смотрите по секторам ⬇️</i>';
+  }
+
+  const inline_keyboard = [
+    [
+      { text: `${sectorFilter === '1' ? '✅ ' : ''}Сектор 1 (1-24)`, callback_data: 'admin_seats_sec_1' },
+      { text: `${sectorFilter === '2' ? '✅ ' : ''}Сектор 2 (25-48)`, callback_data: 'admin_seats_sec_2' }
+    ],
+    [
+      { text: `${sectorFilter === '3' ? '✅ ' : ''}Сектор 3 (49-72)`, callback_data: 'admin_seats_sec_3' },
+      { text: `${sectorFilter === '4' ? '✅ ' : ''}Сектор 4 (73-96)`, callback_data: 'admin_seats_sec_4' }
+    ],
+    [
+      { text: `${sectorFilter === '5' ? '✅ ' : ''}Балкон (97-100)`, callback_data: 'admin_seats_sec_5' },
+      { text: `${sectorFilter === 'ALL' ? '✅ ' : ''}Все (1-100)`, callback_data: 'admin_seats_sec_ALL' }
+    ],
+    [
+      { text: "📄 Скачать CSV список", callback_data: "admin_seats_export_csv" }
+    ]
+  ];
+
+  if (messageId) {
+    try {
+      await callTelegram('editMessageText', {
+        chat_id: chatId,
+        message_id: messageId,
+        parse_mode: 'HTML',
+        text: bodyText,
+        reply_markup: { inline_keyboard }
+      });
+      return;
+    } catch (_err) {}
+  }
+
+  await callTelegram('sendMessage', {
+    chat_id: chatId,
+    parse_mode: 'HTML',
+    text: bodyText,
+    reply_markup: { inline_keyboard }
+  });
+}
+
 const ADMIN_KEYBOARD = {
   keyboard: [
     [{ text: "🔍 Поиск пользователя" }, { text: "🎟 Выдать билет" }],
-    [{ text: "📊 Статистика" }, { text: "🏷 Промокоды" }],
-    [{ text: "📋 Контролеры" }, { text: "👑 Админы" }],
-    [{ text: "ℹ️ Инструкция" }, { text: "❌ Скрыть меню" }]
+    [{ text: "📊 Статистика" }, { text: "💺 Занятые места" }],
+    [{ text: "🏷 Промокоды" }, { text: "📋 Контролеры" }],
+    [{ text: "👑 Админы" }, { text: "ℹ️ Инструкция" }],
+    [{ text: "❌ Скрыть меню" }]
   ],
   resize_keyboard: true,
   persistent: true
@@ -1448,101 +1639,101 @@ async function issueManualTicket({ adminId, recipientId, ticketType = 'Standard'
 }
 
 async function sendIssuedTicket({ userId, user, promoCode, confirmedBy, ticketId, seatInfo }) {
-const qrUrl = `https://t.me/${BOT_USERNAME}?start=scan_${ticketId}`;
+  const qrUrl = `https://t.me/${BOT_USERNAME}?start=scan_${ticketId}`;
 
-let photoBuffer = null;
-try {
-  photoBuffer = await generateTicketQrImage(qrUrl);
-} catch (genErr) {
-  console.error('Ticket QR generation error:', genErr);
-}
-
-const userLang = user.lang || 'ru';
-let ticketCaption = '';
-
-if (userLang === 'uz') {
-  ticketCaption =
-    `🎉 <b>${promoCode ? 'Promo-kod orqali tasdiqlandi!' : "To'lov tasdiqlandi!"}</b>\n\n` +
-    `🎟️ <b>TEDxSergeli Specialized School — Rasmiy Elektron Chipta</b>\n\n` +
-    `👤 <b>Mehmon:</b> ${user.name || 'Mehmon'}\n` +
-    `📍 <b>Sektor:</b> ${seatInfo.sectorName}\n` +
-    `📐 <b>O'rin:</b> ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (Umumiy №${seatInfo.seatNumber})\n` +
-    `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n\n` +
-    `📅 <b>Sana:</b> 4-sentabr, 2026\n` +
-    `📍 <b>Manzil:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Ixtisoslashtirilgan Maktabi (Google Maps)</a>\n\n` +
-    `📌 <b>Kirish qoidalari (TEDx Rules):</b>\n` +
-    `• 1️⃣ Tadbir kunida ushbu QR-kodni nazoratchiga ko'rsating.\n` +
-    `• 2️⃣ Eshiklar soat 14:30 da yopiladi. Kechikmang!\n` +
-    `• 3️⃣ Har bir QR-kod faqat 1 marotaba kirish uchun amal qiladi.\n\n` +
-    `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
-} else if (userLang === 'en') {
-  ticketCaption =
-    `🎉 <b>${promoCode ? 'Confirmed via Promo Code!' : 'Payment confirmed!'}</b>\n\n` +
-    `🎟️ <b>TEDxSergeli Specialized School — Official Ticket</b>\n\n` +
-    `👤 <b>Guest:</b> ${user.name || 'Guest'}\n` +
-    `📍 <b>Sector:</b> ${seatInfo.sector === 5 ? '2nd Floor (Balcony)' : `Sector ${seatInfo.sector}`}\n` +
-    `📐 <b>Seat:</b> Row ${seatInfo.row} / Seat ${seatInfo.seat} (Total №${seatInfo.seatNumber})\n` +
-    `🔑 <b>Ticket ID:</b> <code>${ticketId}</code>\n\n` +
-    `📅 <b>Date:</b> September 4, 2026\n` +
-    `📍 <b>Location:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Specialized School (Google Maps)</a>\n\n` +
-    `📌 <b>Entrance Rules (TEDx Rules):</b>\n` +
-    `• 1️⃣ Show this QR code to the scanner on the day of the event.\n` +
-    `• 2️⃣ Doors close at 14:30. Please arrive on time!\n` +
-    `• 3️⃣ Each QR code is valid for 1 entry only.\n\n` +
-    `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
-} else {
-  ticketCaption =
-    `🎉 <b>${promoCode ? 'Подтверждено по промокоду!' : 'Оплата подтверждена!'}</b>\n\n` +
-    `🎟️ <b>TEDxSergeli Specialized School — Официальный электронный билет</b>\n\n` +
-    `👤 <b>Гость:</b> ${user.name || 'Гость'}\n` +
-    `📍 <b>Сектор:</b> ${seatInfo.sector === 5 ? '2-Этаж (Балкон)' : `Сектор ${seatInfo.sector}`}\n` +
-    `📐 <b>Место:</b> ${seatInfo.row}-ряд / ${seatInfo.seat}-место (Общий №${seatInfo.seatNumber})\n` +
-    `🔑 <b>ID Билета:</b> <code>${ticketId}</code>\n\n` +
-    `📅 <b>Дата:</b> 4 сентября 2026\n` +
-    `📍 <b>Адрес:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Специализированная школа Сергели (Google Maps)</a>\n\n` +
-    `📌 <b>Правила входа (Правила TEDx):</b>\n` +
-    `• 1️⃣ Покажите этот QR-код контролеру на входе в день мероприятия.\n` +
-    `• 2️⃣ Двери закрываются в 14:30. Пожалуйста, не опаздывайте!\n` +
-    `• 3️⃣ Каждый QR-код действителен только для 1 входа.\n\n` +
-    `ℹ️ <i>TEDxSergeli — независимое мероприятие, проводимое по лицензии TED.</i>`;
-}
-
-if (photoBuffer) {
-  await callTelegramPhoto(userId, photoBuffer, ticketCaption);
-} else {
-  await callTelegram('sendMessage', {
-    chat_id: userId,
-    parse_mode: 'HTML',
-    text: ticketCaption
-  });
-}
-
-if (ADMIN_CHAT_ID) {
-  const groupTicketCaption =
-    `🎟️ <b>YANGI CHIPTA ${promoCode ? `(PROMO-KOD: ${promoCode})` : 'BERILDI'}!</b>\n\n` +
-    `👤 <b>Ism:</b> ${user.name || 'Mehmon'}\n` +
-    `📍 <b>Joy:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
-    `📱 <b>Tel / Telegram:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
-    `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n` +
-    `💳 <b>Summa:</b> ${promoCode ? (user.finalPrice ? `${user.finalPrice.toLocaleString()} UZS` : '0 UZS (BEPUL)') : '49,999 UZS'}\n` +
-    `✅ <b>Tasdiqladi:</b> ${confirmedBy || (promoCode ? `Promo-kod (${promoCode})` : 'System')}`;
-
+  let photoBuffer = null;
   try {
-    if (photoBuffer) {
-      await callTelegramPhoto(ADMIN_CHAT_ID, photoBuffer, groupTicketCaption);
-    } else {
-      await callTelegram('sendMessage', {
-        chat_id: ADMIN_CHAT_ID,
-        parse_mode: 'HTML',
-        text: groupTicketCaption
-      });
-    }
-  } catch (dupErr) {
-    console.error('Failed to duplicate ticket to admin chat:', dupErr);
+    photoBuffer = await generateTicketQrImage(qrUrl);
+  } catch (genErr) {
+    console.error('Ticket QR generation error:', genErr);
   }
-}
 
-return { ticketId, seatInfo };
+  const userLang = user.lang || 'ru';
+  let ticketCaption = '';
+
+  if (userLang === 'uz') {
+    ticketCaption =
+      `🎉 <b>${promoCode ? 'Promo-kod orqali tasdiqlandi!' : "To'lov tasdiqlandi!"}</b>\n\n` +
+      `🎟️ <b>TEDxSergeli Specialized School — Rasmiy Elektron Chipta</b>\n\n` +
+      `👤 <b>Mehmon:</b> ${user.name || 'Mehmon'}\n` +
+      `📍 <b>Sektor:</b> ${seatInfo.sectorName}\n` +
+      `📐 <b>O'rin:</b> ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (Umumiy №${seatInfo.seatNumber})\n` +
+      `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n\n` +
+      `📅 <b>Sana:</b> 4-sentabr, 2026\n` +
+      `📍 <b>Manzil:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Ixtisoslashtirilgan Maktabi (Google Maps)</a>\n\n` +
+      `📌 <b>Kirish qoidalari (TEDx Rules):</b>\n` +
+      `• 1️⃣ Tadbir kunida ushbu QR-kodni nazoratchiga ko'rsating.\n` +
+      `• 2️⃣ Eshiklar soat 14:30 da yopiladi. Kechikmang!\n` +
+      `• 3️⃣ Har bir QR-kod faqat 1 marotaba kirish uchun amal qiladi.\n\n` +
+      `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
+  } else if (userLang === 'en') {
+    ticketCaption =
+      `🎉 <b>${promoCode ? 'Confirmed via Promo Code!' : 'Payment confirmed!'}</b>\n\n` +
+      `🎟️ <b>TEDxSergeli Specialized School — Official Ticket</b>\n\n` +
+      `👤 <b>Guest:</b> ${user.name || 'Guest'}\n` +
+      `📍 <b>Sector:</b> ${seatInfo.sector === 5 ? '2nd Floor (Balcony)' : `Sector ${seatInfo.sector}`}\n` +
+      `📐 <b>Seat:</b> Row ${seatInfo.row} / Seat ${seatInfo.seat} (Total №${seatInfo.seatNumber})\n` +
+      `🔑 <b>Ticket ID:</b> <code>${ticketId}</code>\n\n` +
+      `📅 <b>Date:</b> September 4, 2026\n` +
+      `📍 <b>Location:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Sergeli Specialized School (Google Maps)</a>\n\n` +
+      `📌 <b>Entrance Rules (TEDx Rules):</b>\n` +
+      `• 1️⃣ Show this QR code to the scanner on the day of the event.\n` +
+      `• 2️⃣ Doors close at 14:30. Please arrive on time!\n` +
+      `• 3️⃣ Each QR code is valid for 1 entry only.\n\n` +
+      `ℹ️ <i>TEDxSergeli is an independently organized TED event operated under license from TED.</i>`;
+  } else {
+    ticketCaption =
+      `🎉 <b>${promoCode ? 'Подтверждено по промокоду!' : 'Оплата подтверждена!'}</b>\n\n` +
+      `🎟️ <b>TEDxSergeli Specialized School — Официальный электронный билет</b>\n\n` +
+      `👤 <b>Гость:</b> ${user.name || 'Гость'}\n` +
+      `📍 <b>Сектор:</b> ${seatInfo.sector === 5 ? '2-Этаж (Балкон)' : `Сектор ${seatInfo.sector}`}\n` +
+      `📐 <b>Место:</b> ${seatInfo.row}-ряд / ${seatInfo.seat}-место (Общий №${seatInfo.seatNumber})\n` +
+      `🔑 <b>ID Билета:</b> <code>${ticketId}</code>\n\n` +
+      `📅 <b>Дата:</b> 4 сентября 2026\n` +
+      `📍 <b>Адрес:</b> <a href="https://maps.google.com/?q=Sergeli+Ixtisoslashtirilgan+Maktabi">📍 Специализированная школа Сергели (Google Maps)</a>\n\n` +
+      `📌 <b>Правила входа (Правила TEDx):</b>\n` +
+      `• 1️⃣ Покажите этот QR-код контролеру на входе в день мероприятия.\n` +
+      `• 2️⃣ Двери закрываются в 14:30. Пожалуйста, не опаздывайте!\n` +
+      `• 3️⃣ Каждый QR-код действителен только для 1 входа.\n\n` +
+      `ℹ️ <i>TEDxSergeli — независимое мероприятие, проводимое по лицензии TED.</i>`;
+  }
+
+  if (photoBuffer) {
+    await callTelegramPhoto(userId, photoBuffer, ticketCaption);
+  } else {
+    await callTelegram('sendMessage', {
+      chat_id: userId,
+      parse_mode: 'HTML',
+      text: ticketCaption
+    });
+  }
+
+  if (ADMIN_CHAT_ID) {
+    const groupTicketCaption =
+      `🎟️ <b>YANGI CHIPTA ${promoCode ? `(PROMO-KOD: ${promoCode})` : 'BERILDI'}!</b>\n\n` +
+      `👤 <b>Ism:</b> ${user.name || 'Mehmon'}\n` +
+      `📍 <b>Joy:</b> ${seatInfo.sectorName}, ${seatInfo.row}-qator / ${seatInfo.seat}-o'rin (№${seatInfo.seatNumber})\n` +
+      `📱 <b>Tel / Telegram:</b> <code>${user.phone || 'Noma\'lum'}</code>\n` +
+      `🔑 <b>Chipta ID:</b> <code>${ticketId}</code>\n` +
+      `💳 <b>Summa:</b> ${promoCode ? (user.finalPrice ? `${user.finalPrice.toLocaleString()} UZS` : '0 UZS (BEPUL)') : '49,999 UZS'}\n` +
+      `✅ <b>Tasdiqladi:</b> ${confirmedBy || (promoCode ? `Promo-kod (${promoCode})` : 'System')}`;
+
+    try {
+      if (photoBuffer) {
+        await callTelegramPhoto(ADMIN_CHAT_ID, photoBuffer, groupTicketCaption);
+      } else {
+        await callTelegram('sendMessage', {
+          chat_id: ADMIN_CHAT_ID,
+          parse_mode: 'HTML',
+          text: groupTicketCaption
+        });
+      }
+    } catch (dupErr) {
+      console.error('Failed to duplicate ticket to admin chat:', dupErr);
+    }
+  }
+
+  return { ticketId, seatInfo };
 }
 
 // Helper to track user IDs for broadcasting
@@ -2345,6 +2536,7 @@ export default async function handler(req, res) {
               `• <code>/del_scanner @username</code> — Удалить контролера\n` +
               `• <code>/scanners</code> — Список контролеров (кнопка <b>📋 Контролеры</b>)\n\n` +
               `📊 <b>Мониторинг и База Данных:</b>\n` +
+              `• <code>/seats</code> — Список занятых мест (кнопка <b>💺 Занятые места</b>)\n` +
               `• <code>/stats</code> — Живая статистика билетов (кнопка <b>📊 Статистика</b>)\n` +
               `• <code>/reset_db</code> — Очистить все места и сбросить билеты\n` +
               `• <code>/find TEDX-849201</code> — Найти инфо о билете\n` +
@@ -2590,6 +2782,20 @@ export default async function handler(req, res) {
             text: `📋 <b>СПИСОК АВТОРИЗОВАННЫХ КОНТРОЛЕРОВ ВХОДА:</b>\n\n${listStr}`,
             reply_markup: ADMIN_KEYBOARD
           });
+          return res.status(200).json({ ok: true });
+        }
+
+        // Occupied Seats Viewer Command
+        if (
+          text === '💺 Занятые места' ||
+          text.includes('Занятые места') ||
+          text === '/seats' ||
+          text === '/occupied' ||
+          text === '/occupied_seats' ||
+          text === '💺 Joylar' ||
+          text === '💺 Joylar ro\'yxati'
+        ) {
+          await sendOccupiedSeatsOverview(chatId, 'ALL');
           return res.status(200).json({ ok: true });
         }
 
@@ -3912,7 +4118,7 @@ export default async function handler(req, res) {
       }
 
 
-      // Handle Admin Dynamic Action Callbacks (Search, Manual Issuance, Balance Edit, Revocation)
+      // Handle Admin Dynamic Action Callbacks (Search, Manual Issuance, Balance Edit, Revocation, Seats Overview)
       if (data.startsWith('admin_')) {
         if (!(await isSuperAdmin(from, chatId))) {
           await callTelegram('answerCallbackQuery', {
@@ -3924,6 +4130,53 @@ export default async function handler(req, res) {
         }
 
         await callTelegram('answerCallbackQuery', { callback_query_id: id });
+
+        if (data.startsWith('admin_seats_sec_')) {
+          const sector = data.replace('admin_seats_sec_', '');
+          await sendOccupiedSeatsOverview(chatId, sector, message ? message.message_id : null);
+          return res.status(200).json({ ok: true });
+        }
+
+        if (data === 'admin_seats_export_csv') {
+          const seatMap = await getOccupiedSeatsMap();
+          let csvRows = ['Joy_Raqami,Sektor,Qator,Orin,Mehmon_Ismi,Telegram_Username,Telefon,Chipta_ID,Chipta_Turi,Holati,Kirgan_Vaqti'];
+
+          for (let s = 1; s <= 100; s++) {
+            const sObj = seatMap[s];
+            if (sObj) {
+              const details = getSeatDetails(s);
+              const guest = `"${(sObj.guest || 'Mehmon').replace(/"/g, '""')}"`;
+              const username = `"${(sObj.username || '').replace(/"/g, '""')}"`;
+              const phone = `"${(sObj.phone || '').replace(/"/g, '""')}"`;
+              const ticketId = sObj.ticketId || '-';
+              const ticketType = sObj.ticketType || 'Standard';
+              const status = sObj.type === 'CONFIRMED'
+                ? (sObj.isCheckedIn ? 'KIRGAN' : 'SOTILGAN')
+                : 'HOLD';
+              const checkedInTime = sObj.checkedInAt || '-';
+
+              csvRows.push(`${s},"${details.sectorName}",${details.row},${details.seat},${guest},${username},${phone},${ticketId},${ticketType},${status},${checkedInTime}`);
+            }
+          }
+
+          const csvBuffer = Buffer.from(csvRows.join('\n'), 'utf-8');
+
+          try {
+            const formData = new FormData();
+            formData.append('chat_id', chatId);
+            formData.append('caption', `💺 <b>TEDxSergeli Band Qilingan Joylar Ro'yxati (CSV / Excel)</b>\n\nJami band joylar: <b>${Object.keys(seatMap).length} ta / 100</b>\nVaqt: <b>UTC+5 (Toshkent)</b>`);
+            formData.append('parse_mode', 'HTML');
+            formData.append('document', new Blob([csvBuffer], { type: 'text/csv' }), 'tedx_sergeli_occupied_seats.csv');
+
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+              method: 'POST',
+              body: formData
+            });
+          } catch (expErr) {
+            console.error('Failed to send CSV document for seats:', expErr);
+          }
+          return res.status(200).json({ ok: true });
+        }
 
         if (data === 'admin_cancel_step') {
           let u = (await kv.get(`user:${chatId}`)) || {};

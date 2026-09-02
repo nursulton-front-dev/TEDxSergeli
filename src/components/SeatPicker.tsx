@@ -71,7 +71,9 @@ interface SeatPickerProps {
 
 export const SeatPicker: React.FC<SeatPickerProps> = ({ lang, onSelectSeat, onClose }) => {
   const [occupiedSeats, setOccupiedSeats] = useState<number[]>([]);
+  const [seatsDetails, setSeatsDetails] = useState<Record<number, any>>({});
   const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
+  const [inspectedSeat, setInspectedSeat] = useState<number | null>(null);
   const [zoom, setZoom] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -81,10 +83,13 @@ export const SeatPicker: React.FC<SeatPickerProps> = ({ lang, onSelectSeat, onCl
 
   const fetchOccupiedSeats = async () => {
     try {
-      const res = await fetch('/api/seats');
+      const res = await fetch('/api/seats?details=true');
       const data = await res.json();
       if (data.ok && Array.isArray(data.occupiedSeats)) {
         setOccupiedSeats(data.occupiedSeats);
+      }
+      if (data.ok && data.seatsDetails) {
+        setSeatsDetails(data.seatsDetails);
       }
     } catch (err) {
       console.error('Failed to fetch occupied seats:', err);
@@ -92,7 +97,13 @@ export const SeatPicker: React.FC<SeatPickerProps> = ({ lang, onSelectSeat, onCl
   };
 
   const handleSeatClick = (seatNum: number) => {
-    if (occupiedSeats.includes(seatNum) || isSubmitting) return;
+    if (occupiedSeats.includes(seatNum)) {
+      if (seatsDetails[seatNum]) {
+        setInspectedSeat(seatNum);
+      }
+      return;
+    }
+    if (isSubmitting) return;
     setSelectedSeat(prev => (prev === seatNum ? null : seatNum));
   };
 
@@ -120,6 +131,8 @@ export const SeatPicker: React.FC<SeatPickerProps> = ({ lang, onSelectSeat, onCl
   };
 
   const selectedDetails = selectedSeat ? getSeatDetails(selectedSeat) : null;
+  const inspectedDetails = inspectedSeat ? getSeatDetails(inspectedSeat) : null;
+  const inspectedGuestObj = inspectedSeat ? seatsDetails[inspectedSeat] : null;
 
   // Render Sector Grid
   const renderSectorGrid = (startNum: number, rowsCount: number = 6, seatsPerRow: number = 8, title: string) => {
@@ -139,7 +152,7 @@ export const SeatPicker: React.FC<SeatPickerProps> = ({ lang, onSelectSeat, onCl
             let btnClass = "w-6 h-6 sm:w-7 sm:h-7 rounded-md flex items-center justify-center text-[9px] sm:text-xs font-bold transition-all duration-150 cursor-pointer select-none ";
 
             if (isOccupied) {
-              btnClass += "bg-red-950/40 text-red-700/60 border border-red-900/30 cursor-not-allowed opacity-50";
+              btnClass += "bg-red-950/40 text-red-700/80 border border-red-900/50 hover:bg-red-900/60 hover:text-red-300";
             } else if (isSelected) {
               btnClass += "bg-red-600 text-white shadow-md shadow-red-600/50 scale-110 border border-white ring-2 ring-red-500/50 animate-pulse";
             } else {
@@ -149,11 +162,11 @@ export const SeatPicker: React.FC<SeatPickerProps> = ({ lang, onSelectSeat, onCl
             return (
               <button
                 key={seatNum}
-                disabled={isOccupied || isSubmitting}
+                disabled={isSubmitting}
                 onClick={() => handleSeatClick(seatNum)}
                 title={
                   isOccupied
-                    ? `Band / Занято (№${seatNum})`
+                    ? `Band / Занято (№${seatNum}) — Нажмите для информации`
                     : `${details.sectorName[lang]} | ${details.row}-qator, ${details.seat}-o'rin (№${seatNum})`
                 }
                 className={btnClass}
@@ -349,6 +362,75 @@ export const SeatPicker: React.FC<SeatPickerProps> = ({ lang, onSelectSeat, onCl
           )}
         </button>
       </div>
+
+      {/* Inspected Occupied Seat Details Modal Overlay */}
+      {inspectedSeat && inspectedDetails && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5 max-w-sm w-full shadow-2xl relative text-white">
+            <button
+              onClick={() => setInspectedSeat(null)}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-red-950 border border-red-800 flex items-center justify-center text-red-400 font-black text-lg">
+                #{inspectedSeat}
+              </div>
+              <div>
+                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-900/50 text-red-300 border border-red-800 mb-0.5">
+                  {inspectedGuestObj?.type === 'CONFIRMED' ? 'BAND / ZANYATO' : 'HOLD'}
+                </span>
+                <h4 className="font-bold text-base leading-tight">
+                  {inspectedDetails.sectorName[lang]}
+                </h4>
+                <p className="text-xs text-zinc-400">
+                  {inspectedDetails.row}-qator / {inspectedDetails.seat}-o'rin
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2.5 bg-zinc-950 p-3.5 rounded-xl border border-zinc-800 text-xs">
+              <div className="flex justify-between border-b border-zinc-800 pb-2">
+                <span className="text-zinc-400">Mehmon (Guest):</span>
+                <span className="font-semibold text-white">{inspectedGuestObj?.guest || 'Noma\'lum'}</span>
+              </div>
+              {inspectedGuestObj?.username && (
+                <div className="flex justify-between border-b border-zinc-800 pb-2">
+                  <span className="text-zinc-400">Telegram:</span>
+                  <span className="font-semibold text-red-400">{inspectedGuestObj.username}</span>
+                </div>
+              )}
+              {inspectedGuestObj?.phone && (
+                <div className="flex justify-between border-b border-zinc-800 pb-2">
+                  <span className="text-zinc-400">Telefon:</span>
+                  <span className="font-mono text-zinc-200">{inspectedGuestObj.phone}</span>
+                </div>
+              )}
+              {inspectedGuestObj?.ticketId && (
+                <div className="flex justify-between border-b border-zinc-800 pb-2">
+                  <span className="text-zinc-400">Chipta ID:</span>
+                  <span className="font-mono font-bold text-emerald-400">{inspectedGuestObj.ticketId}</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-0.5">
+                <span className="text-zinc-400">Kirish holati:</span>
+                <span className={`font-bold ${inspectedGuestObj?.isCheckedIn ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  {inspectedGuestObj?.isCheckedIn ? '🟢 Kirgan (Checked In)' : '🔴 Hali kirmagan'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setInspectedSeat(null)}
+              className="mt-4 w-full py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-200 transition-colors"
+            >
+              Yopish / Закрыть
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
