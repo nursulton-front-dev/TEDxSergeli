@@ -105,79 +105,19 @@ export const translations = {
     closeModal: { uz: 'Yopish', ru: 'Закрыть', en: 'Close' },
     list: [
       {
-        id: 'abdulla-azizov',
-        name: { uz: 'Abdulla Azizov', ru: 'Абдулла Азизов', en: 'Abdulla Azizov' },
+        id: 'mukhammad-khalil',
+        name: { uz: 'Mukhammad Khalil', ru: 'Мухаммад Халил', en: 'Mukhammad Khalil' },
         title: {
-          uz: "Farmatsevtika tarmog'ini rivojlantirish agentligi rahbari",
-          ru: 'Руководитель Агентства по развитию фармацевтической отрасли',
-          en: 'Head of Medical & Pharmaceutical Industry Development Agency',
+          uz: 'Founder at Startup Garage | Co-Founder at Imkon Ventures',
+          ru: 'Founder at Startup Garage | Co-Founder at Imkon Ventures',
+          en: 'Founder at Startup Garage | Co-Founder at Imkon Ventures',
         },
         bio: {
-          uz: "2004-yilda Toshkent jahon iqtisodiyoti va diplomatiya universitetining Xalqaro iqtisodiy munosabatlar yo'nalishini tamomlagan. 2003-yilda Nagoya universitetida (Yaponiya) iqtisodiyot sohasida tahsil olgan. 2006-yilda Oarhus universitetida (Daniya) Moliya magistri darajasini olgan va Oarhus texnik kollejini IT-dasturlash mutaxassisligi bo'yicha tamomlagan. 2006–2019-yillarda Daniyadagi APM-Maersk A/S, Orsted A/S, Carlsberg A/S, Implement consulting group, Vestas A/S va Danfoss kabi kompaniyalarda moliya va biznes-jarayonlarni raqamlashtirish hamda avtomatlashtirish sohasida mehnat qilgan. 2019–2020-yillarda O'zbekiston Respublikasi Davlat soliq qo'mitasi raisi o'rinbosari, 2020–2022-yillarda Sog'liqni saqlash vaziri o'rinbosari, 2022-yildan 'Olmaliq KMK' AJ Boshqaruv raisining raqamlashtirish bo'yicha o'rinbosari lavozimlarida faoliyat yuritgan.",
-          ru: "В 2004 году окончил Университет мировой экономики и дипломатии в Ташкенте по специальности «Международные экономические отношения». В 2003 году изучал экономику в Университете Нагоя (Япония). В 2006 году получил степень магистра финансов в Орхусском университете (Дания) и окончил Технический колледж Орхуса по специальности «IT-программирование». В 2006–2019 годах работал в сфере цифровизации и автоматизации финансовых и бизнес-процессов в датских компаниях, таких как APM-Maersk A/S, Orsted A/S, Carlsberg A/S, Implement consulting group, Vestas A/S и Danfoss. В 2019 году — советник и зампредседателя Государственного налогового комитета РУз. С июля 2020 года — заместитель министра здравоохранения. С января 2022 года — заместитель председателя правления АО «Алмалыкский ГМК» по цифровизации.",
-          en: "In 2004 he graduated from the University of World Economy and Diplomacy in Tashkent with Bachelor's degree in International Economic Relations. In 2003, he studied economics at Nagoya University (Japan). In 2006, he received a master's degree in Finance from the University of Aarhus (Denmark) and graduated from the Technical College of Aarhus with a professional degree in IT-programming. In 2006-2019, he worked in the field of digitalisation and automation of financial and business processes in Danish companies such as APM-Maersk A/S, Orsted A/S, Carlsberg A/S, Implement consulting group, Vestas A/S and Danfoss. In May-August 2019, Mr. Azizov worked at the State Tax Committee as an advisor to the Chairman. In September 2019, he was appointed Deputy Chairman of the State Tax Committee of the Republic of Uzbekistan. In July 2020, he became Deputy Minister of Health. Since January 2022, he has been the Deputy Chairman of the Board of Almalyk MMC JSC and responsible for digitalization.",
+          uz: "Mukhammad Khalil is a prominent venture investor and startup ecosystem builder driving tech innovation across Central Asia. Based in Uzbekistan, he is the Founder of Startup Garage, a leading venture studio and acceleration hub that transforms early-stage ideas into market-ready companies by providing direct product validation, infrastructure, and strategic mentorship. As the Co-Founder and Managing Partner of Imkon Ventures, an early-stage venture capital fund, Khalil focuses on deploying capital into high-growth sectors, particularly fintech, AI, and EdTech. He previously co-founded Mohirdev, a major Uzbek IT education platform that successfully raised cross-border seed funding. A graduate of Westminster International University in Tashkent, Khalil actively bridges regional talent with global opportunities. Through crowdfunding frameworks and accelerator tracks, he is dedicated to building scalable venture infrastructure that empowers the next generation of emerging-market founders.",
+          ru: "Mukhammad Khalil is a prominent venture investor and startup ecosystem builder driving tech innovation across Central Asia. Based in Uzbekistan, he is the Founder of Startup Garage, a leading venture studio and acceleration hub that transforms early-stage ideas into market-ready companies by providing direct product validation, infrastructure, and strategic mentorship. As the Co-Founder and Managing Partner of Imkon Ventures, an early-stage venture capital fund, Khalil focuses on deploying capital into high-growth sectors, particularly fintech, AI, and EdTech. He previously co-founded Mohirdev, a major Uzbek IT education platform that successfully raised cross-border seed funding. A graduate of Westminster International University in Tashkent, Khalil actively bridges regional talent with global opportunities. Through crowdfunding frameworks and accelerator tracks, he is dedicated to building scalable venture infrastructure that empowers the next generation of emerging-market founders.",
+          en: "Mukhammad Khalil is a prominent venture investor and startup ecosystem builder driving tech innovation across Central Asia. Based in Uzbekistan, he is the Founder of Startup Garage, a leading venture studio and acceleration hub that transforms early-stage ideas into market-ready companies by providing direct product validation, infrastructure, and strategic mentorship. As the Co-Founder and Managing Partner of Imkon Ventures, an early-stage venture capital fund, Khalil focuses on deploying capital into high-growth sectors, particularly fintech, AI, and EdTech. He previously co-founded Mohirdev, a major Uzbek IT education platform that successfully raised cross-border seed funding. A graduate of Westminster International University in Tashkent, Khalil actively bridges regional talent with global opportunities. Through crowdfunding frameworks and accelerator tracks, he is dedicated to building scalable venture infrastructure that empowers the next generation of emerging-market founders.",
         },
-        image: '/speakers/abdulla-azizov.jpg',
-      },
-      {
-        id: 'odilbek-mirzayev',
-        name: { uz: 'Odilbek Mirzayev', ru: 'Одилбек Мирзаев', en: 'Odilbek Mirzayev' },
-        title: {
-          uz: 'PDP Ecosystem va PDP Academy asoschisi hamda CEO',
-          ru: 'Основатель и CEO PDP Ecosystem',
-          en: 'Founder and CEO of PDP Ecosystem',
-        },
-        bio: {
-          uz: "Odilbek Mirzayev — Toshkentda joylashgan PDP Academy va PDP Ecosystem asoschisi. O'zbekiston Respublikasi Bosh prokuraturasi, Davlat soliq qo'mitasi, Iqtisodiy taraqqiyot va kambag'allikni qisqartirish vazirligi hamda O'zbekiston respublika tovar-xom ashyo birjasida boy tajribaga ega. Toshkent axborot texnologiyalari universiteti bakalavriat bitiruvchisi (2008-2012).",
-          ru: "Одилбек Мирзаев — основатель PDP Academy и PDP Ecosystem в Ташкенте. Имеет богатый опыт работы в Генеральной прокуратуре Республики Узбекистан, Государственном налоговом комитете, Министерстве экономического развития и сокращения бедности, а также на Узбекской республиканской товарно-сырьевой бирже. Выпускник Ташкентского университета информационных технологий (2008-2012).",
-          en: "Odilbek Mirzayev, based in Tashkent, UZ, is currently a Founder at PDP Academy. Odilbek Mirzayev brings experience from previous roles at General Prosecutor's Office of Republic of Uzbekistan, State Tax Committee of the Republic of Uzbekistan, Ministry of Economic Development and Poverty Reduction of the Republic of Uzbekistan and Uzbek commodity exchange. Odilbek Mirzayev holds a 2008 - 2012 Bachelors @ Tashkent University of Information Technologies.",
-        },
-        image: '/speakers/odilbek-mirzayev.jpg',
-      },
-      {
-        id: 'abrorbek-sharipov',
-        name: { uz: 'Abrorbek Sharipov', ru: 'Аброрбек Шарипов', en: 'Abrorbek Sharipov' },
-        title: {
-          uz: 'jobster.hr va ishGO.uz asoschisi va CEO',
-          ru: 'Основатель и CEO jobster.hr и ishGO.uz',
-          en: 'Founder & CEO of jobster.hr and ishGO.uz',
-        },
-        bio: {
-          uz: "Abrorbek Sharipov — jobster.hr va ishGO.uz kabi zamonaviy HR va ishga joylashtirish platformalarining asoschisi hamda rahbari. Mehnat bozori va kadrlar bilan ishlashda innovatsion texnologiyalarni joriy etib kelmoqda.",
-          ru: "Аброрбек Шарипов — основатель и руководить инновационных HR- и рекрутинговых платформ jobster.hr и ishGO.uz. Внедряет передовые технологические решения в сферу трудоустройства.",
-          en: "Abrorbek Sharipov is the founder and CEO of jobster.hr and ishGO.uz, leading recruitment platforms transforming hiring and HR technology.",
-        },
-        image: '/speakers/abrorbek-sharipov.jpg',
-      },
-      {
-        id: 'diyora-mamirjanova',
-        name: { uz: 'Diyora Mamirjanova', ru: 'Диёра Мамиржанова', en: 'Diyora Mamirjanova' },
-        title: {
-          uz: "O'zbekiston Jurnalistika va ommaviy kommunikatsiyalar universiteti 1-kurs talabasi",
-          ru: 'Студентка 1-го курса Университета журналистики и массовых коммуникаций Узбекистана',
-          en: '1st-year student at University of Journalism & Mass Communications',
-        },
-        bio: {
-          uz: "«Biz tarixdagidan ko'ra ko'proq ma'lumotga egamiz, lekin rostdan ham yaxshiroq fikrlaydigan bo'lyapmizmi?»\n\nDiyora axborot asrida tanqidiy fikrlash, axborot iste'moli va fikrlash madaniyati mavzusida o'z fikrlari bilan bo'lishadi.",
-          ru: "«У нас есть доступ к большему количеству информации, чем когда-либо, но становимся ли мы лучше мыслить на самом деле?»\n\nДиёра делится глубоким взглядом на критическое мышление и восприятие информации в эпоху информационного изобилия.",
-          en: "“We have access to more information than ever, but are we actually becoming better thinkers?”\n\nDiyora explores information overload, critical thinking, and media literacy in the modern era.",
-        },
-        image: '/speakers/diyora-mamirjanova.jpg',
-      },
-      {
-        id: 'abdulaziz-sharipov',
-        name: { uz: 'Abdulaziz Sharipov', ru: 'Абдулазиз Шарипов', en: 'Abdulaziz Sharipov' },
-        title: {
-          uz: "Konya Anadolu International maktabi o'quvchisi",
-          ru: 'Ученик international школы Konya Anadolu International',
-          en: 'Student at Konya Anadolu International',
-        },
-        bio: {
-          uz: "Abdulaziz Sharipov — Konya Anadolu International xalqaro maktabi o'quvchisi. Zamonaviy ta'lim, shaxsiy o'sish va yoshlarning kelajakka bo'lgan intilishlari haqida sahnada so'z yuritadi.",
-          ru: "Абдулазиз Шарипов — ученик международной школы Konya Anadolu International. Выступает с идеями о современном образовании и личностном росте.",
-          en: "Abdulaziz Sharipov is a student at Konya Anadolu International, presenting fresh perspectives on modern learning and personal growth.",
-        },
-        image: '/speakers/abdulaziz-sharipov.jpg',
+        image: '/speakers/mukhammad-khalil.jpg',
       },
       {
         id: 'kamola-sirojiddinova',
@@ -195,12 +135,87 @@ export const translations = {
         image: '/speakers/kamola-sirojiddinova.jpg',
       },
       {
+        id: 'diyora-mamirjanova',
+        name: { uz: 'Diyorabonu Mamirjanova', ru: 'Диёрабону Мамиржанова', en: 'Diyorabonu Mamirjanova' },
+        title: {
+          uz: "O'zbekiston Jurnalistika va ommaviy kommunikatsiyalar universiteti talabasi",
+          ru: 'Студентка Университета журналистики и массовых коммуникаций Узбекистана',
+          en: 'Student at Univ. of Journalism & Mass Communications',
+        },
+        bio: {
+          uz: "«Biz tarixdagidan ko'ra ko'proq ma'lumotga egamiz, lekin rostdan ham yaxshiroq fikrlaydigan bo'lyapmizmi?»\n\nDiyorabonu axborot asrida tanqidiy fikrlash, axborot iste'moli va fikrlash madaniyati mavzusida o'z fikrlari bilan bo'lishadi.",
+          ru: "«У нас есть доступ к большему количеству информации, чем когда-либо, но становимся ли мы лучше мыслить на самом деле?»\n\nДиёрабону делится глубоким взглядом на критическое мышление и восприятие информации в эпоху информационного изобилия.",
+          en: "“We have access to more information than ever, but are we actually becoming better thinkers?”\n\nDiyorabonu explores information overload, critical thinking, and media literacy in the modern era.",
+        },
+        image: '/speakers/diyora-mamirjanova.jpg',
+      },
+      {
+        id: 'shamshod-xolmurodov',
+        name: { uz: 'Shamshod Xolmurodov', ru: 'Шамшод Холмуродов', en: 'Shamshod Xolmurodov' },
+        title: {
+          uz: "Sergeli ixtisoslashtirilgan maktabi o'quvchisi",
+          ru: 'Ученик Специализированной школы Сергели',
+          en: 'Student at Sergeli Specialized School',
+        },
+        bio: {
+          uz: "«Gigiyena paradoksi» bilan tanishing: nima uchun kundalik hayotdagi ozgina kir va mikroblar immun tizimini kuchaytirishning siri bo'lishi mumkin?\n\nShamshod biologiya va immunologiya sohasidagi qiziqarli g'oyasini namoyish etadi.",
+          ru: "Откройте для себя «Парадокс гигиены»: почему небольшое количество повседневной грязи на самом деле может быть секретом сильного иммунитета.\n\nШамшод делится интригующим научным взглядом на здоровье и иммунитет.",
+          en: "Discover the “Hygiene Paradox” and why a little bit of everyday dirt might actually be the secret to a stronger immune system.\n\nShamshod explores fascinating concepts in human immunity and biology.",
+        },
+        image: '/speakers/shamshod-xolmurodov.jpg',
+      },
+      {
+        id: 'abrorbek-sharipov',
+        name: { uz: 'Abrorbek Sharipov', ru: 'Аброрбек Шарипов', en: 'Abrorbek Sharipov' },
+        title: {
+          uz: 'Jobster.hr va ishGO.uz asoschisi hamda CEO',
+          ru: 'Основатель и CEO Jobster.hr и ishGO.uz',
+          en: 'Founder & CEO of Jobster.hr and ishGO.uz',
+        },
+        bio: {
+          uz: "Abrorbek Sharipov — jobster.hr va ishGO.uz kabi zamonaviy HR va ishga joylashtirish platformalarining asoschisi hamda rahbari. Mehnat bozori va kadrlar bilan ishlashda innovatsion texnologiyalarni joriy etib kelmoqda.",
+          ru: "Аброрбек Шарипов — основатель и руководить инновационных HR- и рекрутинговых платформ jobster.hr и ishGO.uz. Внедряет передовые технологические решения в сферу трудоустройства.",
+          en: "Abrorbek Sharipov is the founder and CEO of jobster.hr and ishGO.uz, leading recruitment platforms transforming hiring and HR technology.",
+        },
+        image: '/speakers/abrorbek-sharipov.jpg',
+      },
+      {
+        id: 'sougand-akbarian',
+        name: { uz: 'Sougand Akbarian', ru: 'Соуганд Акбариан', en: 'Sougand Akbarian' },
+        title: {
+          uz: "Xalqaro qishloq xo'jaligi universiteti dotsenti",
+          ru: 'Доцент Международного сельскохозяйственного университета (Ташкент)',
+          en: 'Associate Professor, International Agricultural University, Tashkent',
+        },
+        bio: {
+          uz: "Sougand Akbarian — Toshkentdagi Xalqaro qishloq xo'jaligi universiteti dotsenti va tadqiqotchisi. U barqaror rivojlanish, agrotexnologiyalar va global o'zgarishlarning jamiyatga ta'siri bo'yicha izlanishlar olib boradi hamda TEDx sahnasida o'zining innovatsion g'oyalarini taqdim etadi.",
+          ru: "Суганд Акбариан — доцент и исследователь Международного сельскохозяйственного университета в Ташкенте. Занимается исследованиями в области устойчивого развития, агротехнологий и влияния глобальных изменений на общество, выступая на сцене TEDx с инновационными идеями.",
+          en: "Sougand Akbarian is an Associate Professor at the International Agricultural University in Tashkent. She engages in research on sustainable development, agritech, and how global shifts shape society, bringing insightful perspectives to the TEDx stage.",
+        },
+        image: '/speakers/sougand-akbarian.jpg',
+      },
+      {
+        id: 'abdulaziz-sharipov',
+        name: { uz: 'Abdulaziz Sharipov', ru: 'Абдулазиз Шарипов', en: 'Abdulaziz Sharipov' },
+        title: {
+          uz: "Konya Anadolu International maktabi o'quvchisi | Yosh ixtirochi",
+          ru: 'Ученик Konya Anadolu International | Молодой изобретатель',
+          en: 'Student at Konya Anadolu International | Young Inventor',
+        },
+        bio: {
+          uz: "Abdulaziz Sharipov — Konya Anadolu International xalqaro maktabi o'quvchisi. Zamonaviy ta'lim, shaxsiy o'sish va yoshlarning kelajakka bo'lgan intilishlari haqida sahnada so'z yuritadi.",
+          ru: "Абдулазиз Шарипов — ученик международной школы Konya Anadolu International. Выступает с идеями о современном образовании и личностном росте.",
+          en: "Abdulaziz Sharipov is a student at Konya Anadolu International, presenting fresh perspectives on modern learning and personal growth.",
+        },
+        image: '/speakers/abdulaziz-sharipov.jpg',
+      },
+      {
         id: 'eva-korneeva',
         name: { uz: 'Eva Korneeva', ru: 'Ева Корнеева', en: 'Eva Korneeva' },
         title: {
-          uz: "Speak Up tillar maktabi o'qituvchisi",
-          ru: 'Преподаватель в языковой школе Speak Up',
-          en: 'Teacher at Speak Up Language School',
+          uz: "Speak Up tillar maktabi o'qituvchisi & Youth Leader",
+          ru: 'Преподаватель в языковой школе Speak Up & Youth Leader',
+          en: 'Teacher at Speak Up Language School & Youth Leader',
         },
         bio: {
           uz: "«Ta'limning maqsadi bizga tayyor javoblar berish emas, balki to'g'ri savol berishni o'rgatish bo'lsa-chi?»\n\nEva zamonaviy ta'lim falsafasi va qiziquvchanlikning shaxsiy rivojlanishdagi o'rni haqida so'zlaydi.",
@@ -225,34 +240,19 @@ export const translations = {
         image: '/speakers/sodiq-abdugafarov.jpg',
       },
       {
-        id: 'laziza-tuymiratova',
-        name: { uz: 'Laziza Tuymiratova', ru: 'Лазиза Туймиратова', en: 'Laziza Tuymiratova' },
+        id: 'abdulla-azizov',
+        name: { uz: 'Abdulla Azizov', ru: 'Абдулла Азизов', en: 'Abdulla Azizov' },
         title: {
-          uz: "21-maktab o'quvchisi, yosh tadqiqotchi",
-          ru: 'Ученица 21-й школы, молодой исследователь',
-          en: 'Student of 21st school, young researcher',
+          uz: "Farmatsevtika tarmog'ini rivojlantirish agentligi rahbari",
+          ru: 'Руководитель Агентства по развитию фармацевтической отрасли',
+          en: 'Head of Medical & Pharmaceutical Industry Development Agency',
         },
         bio: {
-          uz: "«Kuchning eng oliy belgisi — bahsda yutib chiqish emas, balki o'z kibridan ko'ra haqiqatga ochiq bo'lishdir.»\n\nLaziza mulohaza yuritish, haqiqatni izlash va fikrlash moslashuvchanligi haqida ma'ruza qiladi.",
-          ru: "«Высший признак силы — не победа в споре, а способность открыть разум истине, которая выше эго».\n\nЛазиза поднимает вопросы гибкости ума, осознанности и поиска истины.",
-          en: "“The ultimate sign of strength isn't winning an argument, but opening your mind to a truth higher than your ego.”\n\nLaziza presents thoughts on intellectual humility, strength, and open-mindedness.",
+          uz: "2004-yilda Toshkent jahon iqtisodiyoti va diplomatiya universitetining Xalqaro iqtisodiy munosabatlar yo'nalishini tamomlagan. 2003-yilda Nagoya universitetida (Yaponiya) iqtisodiyot sohasida tahsil olgan. 2006-yilda Oarhus universitetida (Daniya) Moliya magistri darajasini olgan va Oarhus texnik kollejini IT-dasturlash mutaxassisligi bo'yicha tamomlagan. 2006–2019-yillarda Daniyadagi APM-Maersk A/S, Orsted A/S, Carlsberg A/S, Implement consulting group, Vestas A/S va Danfoss kabi kompaniyalarda moliya va biznes-jarayonlarni raqamlashtirish hamda avtomatlashtirish sohasida mehnat qilgan. 2019–2020-yillarda O'zbekiston Respublikasi Davlat soliq qo'mitasi raisi o'rinbosari, 2020–2022-yillarda Sog'liqni saqlash vaziri o'rinbosari, 2022-yildan 'Olmaliq KMK' AJ Boshqaruv raisining raqamlashtirish bo'yicha o'rinbosari lavozimlarida faoliyat yuritgan.",
+          ru: "В 2004 году окончил Университет мировой экономики и дипломатии в Ташкенте по специальности «Международные экономические отношения». В 2003 году изучал экономику в Университете Нагоя (Япония). В 2006 году получил степень магистра финансов в Орхусском университете (Дания) и окончил Технический колледж Орхуса по специальности «IT-программирование». В 2006–2019 годах работал в сфере цифровизации и автоматизации финансовых и бизнес-процессов в датских компаниях, таких как APM-Maersk A/S, Orsted A/S, Carlsberg A/S, Implement consulting group, Vestas A/S и Danfoss. В 2019 году — советник и зампредседателя Государственного налогового комитета РУз. С июля 2020 года — заместитель министра здравоохранения. С января 2022 года — заместитель председателя правления АО «Алмалыкский ГМК» по цифровизации.",
+          en: "In 2004 he graduated from the University of World Economy and Diplomacy in Tashkent with Bachelor's degree in International Economic Relations. In 2003, he studied economics at Nagoya University (Japan). In 2006, he received a master's degree in Finance from the University of Aarhus (Denmark) and graduated from the Technical College of Aarhus with a professional degree in IT-programming. In 2006-2019, he worked in the field of digitalisation and automation of financial and business processes in Danish companies such as APM-Maersk A/S, Orsted A/S, Carlsberg A/S, Implement consulting group, Vestas A/S and Danfoss. In May-August 2019, Mr. Azizov worked at the State Tax Committee as an advisor to the Chairman. In September 2019, he was appointed Deputy Chairman of the State Tax Committee of the Republic of Uzbekistan. In July 2020, he became Deputy Minister of Health. Since January 2022, he has been the Deputy Chairman of the Board of Almalyk MMC JSC and responsible for digitalization.",
         },
-        image: '/speakers/laziza-tuymiratova.jpg',
-      },
-      {
-        id: 'shamshod-xolmurodov',
-        name: { uz: 'Shamshod Xolmurodov', ru: 'Шамшод Холмуродов', en: 'Shamshod Xolmurodov' },
-        title: {
-          uz: "Sergeli ixtisoslashtirilgan maktabi o'quvchisi",
-          ru: 'Ученик Специализированной школы Сергели',
-          en: 'Student at Sergeli Specialized School',
-        },
-        bio: {
-          uz: "«Gigiyena paradoksi» bilan tanishing: nima uchun kundalik hayotdagi ozgina kir va mikroblar immun tizimini kuchaytirishning siri bo'lishi mumkin?\n\nShamshod biologiya va immunologiya sohasidagi qiziqarli g'oyasini namoyish etadi.",
-          ru: "Откройте для себя «Парадокс гигиены»: почему небольшое количество повседневной грязи на самом деле может быть секретом сильного иммунитета.\n\nШамшод делится интригующим научным взглядом на здоровье и иммунитет.",
-          en: "Discover the “Hygiene Paradox” and why a little bit of everyday dirt might actually be the secret to a stronger immune system.\n\nShamshod explores fascinating concepts in human immunity and biology.",
-        },
-        image: '/speakers/shamshod-xolmurodov.jpg',
+        image: '/speakers/abdulla-azizov.jpg',
       },
     ],
     teasers: [],
@@ -265,26 +265,28 @@ export const translations = {
     titleAccent: { uz: 'dasturi', ru: 'мероприятия', en: 'Run of Show' },
     dayLabel: { uz: 'Rasmiy kun tartibi • 4-Sentabr, 2026', ru: 'Официальный сценарий • 4 Сентября 2026', en: 'Official Agenda • September 4, 2026' },
     filterAll: { uz: 'Barchasi', ru: 'Все блоки', en: 'All' },
+    bioBtn: { uz: 'Tarjimai hol', ru: 'Биография', en: 'Bio' },
+    breakBadge: { uz: 'Tanaffus & Netvorking', ru: 'Перерыв & Нетворкинг', en: 'Break & Networking' },
     sections: [
       {
         id: 'preshow',
         badge: { uz: 'Pre-Show', ru: 'Pre-Show', en: 'Pre-Show' },
-        title: { uz: 'Tadbirga tayyorgarlik (14:00 gacha)', ru: 'Подготовка к открытию (до 14:00)', en: 'Pre-Show Staging (Until 14:00)' },
-        timeRange: '13:00 – 14:00',
+        title: { uz: 'Boshlanishdan oldin (Pre-Show)', ru: 'До начала (Pre-Show)', en: 'Pre-Show Staging' },
+        timeRange: '13:00 – 13:55',
         items: [
           {
             time: '13:00',
-            title: { uz: 'Spikerlar kelishi, AV va mikrofon brifingi', ru: 'Прибытие спикеров, инструктаж по АВ и микрофонам', en: 'Speakers arrival, AV & microphone briefing' },
+            title: { uz: 'Spikerlar kelishi, AV va mikrofon brifingi', ru: 'Прибытие спикеров, АВ и микрофонный брифинг', en: 'Speakers arrival, AV & microphone briefing' },
             type: 'prep',
           },
           {
             time: '13:15',
-            title: { uz: 'Saksofonchining ovoz tekshiruvi (Sound check)', ru: 'Саундчек саксофониста', en: 'Saxophonist sound check' },
+            title: { uz: 'Saksofonchining ovoz tekshiruvi (Sound check)', ru: 'Саундчек саксофониста (Sound check)', en: 'Saxophonist sound check' },
             type: 'prep',
           },
           {
             time: '13:30',
-            title: { uz: 'Yengil tamaddi va ichimliklar tayyorlanishi', ru: 'Сервировка закусок и напитков', en: 'Snacks & refreshment staging' },
+            title: { uz: 'Yengil tamaddi va ichimliklar tayyorlanishi', ru: 'Приготовление легких закусок и напитков', en: 'Light snacks & drinks staging' },
             type: 'prep',
           },
           {
@@ -294,7 +296,7 @@ export const translations = {
           },
           {
             time: '13:55',
-            title: { uz: 'Joylashuvni yakuniy tekshirish, chiroqlar va eshiklar yopilishi', ru: 'Финальная проверка мест, сигнал свету, закрытие дверей', en: 'Final seating check, house lights cue, doors close' },
+            title: { uz: 'Joylashuvni yakuniy tekshirish, chiroqlar va eshiklar yopilishi', ru: 'Финальная проверка рассадки, выключение света и закрытие дверей', en: 'Final seating check, house lights & doors close' },
             type: 'prep',
           },
         ]
@@ -314,7 +316,7 @@ export const translations = {
           {
             time: '14:05 – 14:10',
             title: { uz: 'Rasmiy TEDx kirish videosi', ru: 'Официальное вводное видео TEDx', en: 'Official TEDx Intro Video' },
-            desc: { uz: 'TEDx intromusika va taqdimot roligi', ru: 'Интро-ролик TEDx', en: 'TEDx intro video presentation' },
+            desc: { uz: 'TEDx intromusika va taqdimot roligi', ru: 'Интро-музыка TEDx и презентационный ролик', en: 'TEDx intro music & presentation video' },
             type: 'main',
           },
         ]
@@ -322,15 +324,28 @@ export const translations = {
       {
         id: 'part2',
         badge: { uz: 'PART 2', ru: 'PART 2', en: 'PART 2' },
-        title: { uz: '1-Spikerlar sessiyasi (14:10 – 15:00)', ru: 'Сессия спикеров 1 (14:10 – 15:00)', en: 'Speakers Session 1 (14:10 – 15:00)' },
+        title: {
+          uz: '1-sessiya — Birinchi nigohdan narida (14:10 – 15:00)',
+          ru: 'Сессия 1 — За пределами первого взгляда (14:10 – 15:00)',
+          en: 'Session 1 — Beyond the First Glance (14:10 – 15:00)'
+        },
+        desc: {
+          uz: "Buyuk kashfiyotlar ko'pincha insonning ichki dunyosidan boshlanadi. Ushbu sessiyada besh nafar spiker insoniy tajribaning yashirin jihatlarini o'rganib, fikrlash va muloqot qilish chegaralarini kengaytiradi.",
+          ru: 'Великие открытия часто начинаются внутри нас. В этой сессии пять спикеров исследуют скрытые грани человеческого опыта, меняя наш привычный взгляд на чувства, мысли и общение.',
+          en: 'Great discoveries often start within. In this session, five speakers explore the hidden complexities of the human experience, challenging how we think, feel, and connect with one another beyond the surface.',
+        },
         timeRange: '14:10 – 15:00',
         items: [
           {
             time: '14:10 – 14:20',
-            speakerId: 'odilbek-mirzayev',
-            name: { uz: 'Odilbek Mirzayev', ru: 'Одилбек Мирзаев', en: 'Odilbek Mirzayev' },
-            title: { uz: 'PDP Ecosystem va PDP Academy asoschisi hamda CEO', ru: 'Основатель и CEO PDP Ecosystem', en: 'Founder of PDP Ecosystem' },
-            image: '/speakers/odilbek-mirzayev.jpg',
+            speakerId: 'mukhammad-khalil',
+            name: { uz: 'Mukhammad Khalil', ru: 'Мухаммад Халил', en: 'Mukhammad Khalil' },
+            title: {
+              uz: 'Startup Garage asoschisi | Imkon Ventures hammuassisi',
+              ru: 'Основатель Startup Garage | Сооснователь Imkon Ventures',
+              en: 'Founder at Startup Garage | Co-Founder at Imkon Ventures'
+            },
+            image: '/speakers/mukhammad-khalil.jpg',
             type: 'talk',
           },
           {
@@ -344,7 +359,7 @@ export const translations = {
           {
             time: '14:30 – 14:40',
             speakerId: 'diyora-mamirjanova',
-            name: { uz: 'Diyora Mamirjanova', ru: 'Диёра Мамиржанова', en: 'Diyora Mamirjanova' },
+            name: { uz: 'Diyorabonu Mamirjanova', ru: 'Диёрабону Мамиржанова', en: 'Diyorabonu Mamirjanova' },
             title: { uz: "O'zbekiston Jurnalistika va ommaviy kommunikatsiyalar universiteti talabasi", ru: 'Студентка Университета журналистики и массовых коммуникаций', en: 'Student at Univ. of Journalism & Mass Communications' },
             image: '/speakers/diyora-mamirjanova.jpg',
             type: 'talk',
@@ -361,7 +376,7 @@ export const translations = {
             time: '14:50 – 15:00',
             speakerId: 'abrorbek-sharipov',
             name: { uz: 'Abrorbek Sharipov', ru: 'Аброрбек Шарипов', en: 'Abrorbek Sharipov' },
-            title: { uz: 'Jobster.hr va ishGO.uz asoschisi hamda CEO', ru: 'Основатель и CEO Jobster.hr и ishGO.uz', en: 'Founder of Jobster.hr and ishGO.uz' },
+            title: { uz: 'Jobster.hr va ishGO.uz asoschisi hamda CEO', ru: 'Основатель и CEO Jobster.hr и ishGO.uz', en: 'Founder & CEO of Jobster.hr and ishGO.uz' },
             image: '/speakers/abrorbek-sharipov.jpg',
             type: 'talk',
           },
@@ -370,13 +385,22 @@ export const translations = {
       {
         id: 'break',
         badge: { uz: 'BREAK', ru: 'BREAK', en: 'BREAK' },
-        title: { uz: 'Tanaffus va Netvorking (15:00 – 15:20)', ru: 'Перерыв и Нетворкинг (15:00 – 15:20)', en: 'Break & Networking (15:00 – 15:20)' },
-        timeRange: '15:00 – 15:20 (20 min)',
+        title: {
+          uz: 'Saksofon va Netvorking tanaffusi (15:00 – 15:15)',
+          ru: 'Саксофон и Нетворкинг перерыв (15:00 – 15:15)',
+          en: 'Saxophone & Networking Break (15:00 – 15:15)'
+        },
+        desc: {
+          uz: "1-sessiya g'oyalarini muhokama qilish va hordiq chiqarish uchun loungedan bahramand bo'ling. Ichimliklar, mazali yemaklar va saksofon ijrosidan bahramand bo'ling.",
+          ru: 'Отдохните в лаунж-зоне и обдумайте идеи первой сессии. Насладитесь напитками, закусками и живой музыкой саксофона для идеальной атмосферы общения.',
+          en: 'Step into the lounge to recharge and process the ideas from Session 1. Enjoy complimentary drinks, delicious snacks, and a live saxophone performance crafted to set the perfect tone for networking and conversation.',
+        },
+        timeRange: '15:00 – 15:15',
         items: [
           {
-            time: '15:00 – 15:20',
-            title: { uz: 'Jonli saksofon musiqasi, kofe-breyk va netvorking', ru: 'Живое выступление саксофониста, кофе-брейк и нетворкинг', en: 'Live Saxophone Performance, coffee break & networking' },
-            desc: { uz: '15:18 — Ishtirokchilarni zalga qaytarish', ru: '15:18 — Приглашение в зал', en: '15:18 — Call to seats' },
+            time: '15:00 – 15:15',
+            title: { uz: 'Jonli saksofon ijrosi, kofe-breyk va erkin muloqot', ru: 'Живое выступление саксофониста, кофе-брейк и нетворкинг', en: 'Live saxophone performance, coffee break & networking' },
+            desc: { uz: '15:13 — Ishtirokchilarni zalga qaytarish signali', ru: '15:13 — Сигнал для возвращения участников в зал', en: '15:13 — Call to return attendees to the hall' },
             type: 'break',
           },
         ]
@@ -384,35 +408,44 @@ export const translations = {
       {
         id: 'part3',
         badge: { uz: 'PART 3', ru: 'PART 3', en: 'PART 3' },
-        title: { uz: '2-Spikerlar sessiyasi (15:20 – 16:10)', ru: 'Сессия спикеров 2 (15:20 – 16:10)', en: 'Speakers Session 2 (15:20 – 16:10)' },
-        timeRange: '15:20 – 16:10',
+        title: {
+          uz: "2-sessiya — Ko'rinmas burchaklar (15:15 – 16:10)",
+          ru: 'Сессия 2 — Невидимые грани (15:15 – 16:10)',
+          en: 'Session 2 — Unseen Angles (15:15 – 16:10)'
+        },
+        desc: {
+          uz: "Alohida g'oyalar butun dunyoni qanday o'zgartiradi? Ikkinchi sessiyamizda besh nafar spiker mavjud chegaralardan tashqariga nazar tashlab, umumiy kelajagimizni shakllantiruvchi tizimlar, texnologiyalar va global o'zgarishlarni o'rganadi.",
+          ru: 'Как отдельные идеи меняют большой мир? Во второй сессии пять спикеров заглядывают за привычные рамки, исследуя системы, технологии и глобальные изменения, формирующие наше общее будущее.',
+          en: 'How do individual ideas shape the wider world? Our second session features five speakers looking past current boundaries to explore the systems, technologies, and global shifts shaping our shared future.',
+        },
+        timeRange: '15:15 – 16:10',
         items: [
           {
-            time: '15:20 – 15:30',
+            time: '15:15 – 15:25',
+            speakerId: 'sougand-akbarian',
+            name: { uz: 'Sougand Akbarian', ru: 'Соуганд Акбариан', en: 'Sougand Akbarian' },
+            title: { uz: "International Agricultural University dotsenti", ru: 'Доцент International Agricultural University', en: 'Associate Professor, International Agricultural University' },
+            image: '/speakers/sougand-akbarian.jpg',
+            type: 'talk',
+          },
+          {
+            time: '15:25 – 15:35',
             speakerId: 'abdulaziz-sharipov',
             name: { uz: 'Abdulaziz Sharipov', ru: 'Абдулазиз Шарипов', en: 'Abdulaziz Sharipov' },
-            title: { uz: "Konya Anadolu International maktabi o'quvchisi", ru: 'Ученик Konya Anadolu International', en: 'Student at Konya Anadolu International' },
+            title: { uz: "Konya Anadolu International maktabi o'quvchisi | Yosh ixtirochi", ru: 'Ученик Konya Anadolu International | Молодой изобретатель', en: 'Student at Konya Anadolu International | Young Inventor' },
             image: '/speakers/abdulaziz-sharipov.jpg',
             type: 'talk',
           },
           {
-            time: '15:30 – 15:40',
+            time: '15:35 – 15:45',
             speakerId: 'eva-korneeva',
             name: { uz: 'Eva Korneeva', ru: 'Ева Корнеева', en: 'Eva Korneeva' },
-            title: { uz: "Speak Up tillar maktabi o'qituvchisi", ru: 'Преподаватель в языковой школе Speak Up', en: 'Teacher at Speak Up Language School' },
+            title: { uz: "Speak Up tillar maktabi o'qituvchisi & Youth Leader", ru: 'Преподаватель в языковой школе Speak Up & Youth Leader', en: 'Teacher at Speak Up Language School & Youth Leader' },
             image: '/speakers/eva-korneeva.jpg',
             type: 'talk',
           },
           {
-            time: '15:40 – 15:50',
-            speakerId: 'laziza-tuymiratova',
-            name: { uz: 'Laziza Tuymiratova', ru: 'Лазиза Туймиратова', en: 'Laziza Tuymiratova' },
-            title: { uz: "21-maktab o'quvchisi / Yosh tadqiqotchi", ru: 'Ученица 21-й школы / Молодой исследователь', en: 'Student of 21st school / Young Researcher' },
-            image: '/speakers/laziza-tuymiratova.jpg',
-            type: 'talk',
-          },
-          {
-            time: '15:50 – 16:00',
+            time: '15:45 – 15:55',
             speakerId: 'sodiq-abdugafarov',
             name: { uz: 'Sodiq Abdugafarov', ru: 'Содик Абдугафаров', en: 'Sodiq Abdugafarov' },
             title: { uz: "Ideal Study o'quvchisi", ru: 'Ученик Ideal Study', en: 'Student at Ideal Study' },
@@ -420,7 +453,7 @@ export const translations = {
             type: 'talk',
           },
           {
-            time: '16:00 – 16:10',
+            time: '15:55 – 16:10',
             speakerId: 'abdulla-azizov',
             name: { uz: 'Abdulla Azizov', ru: 'Абдулла Азизов', en: 'Abdulla Azizov' },
             title: { uz: "Farmatsevtika tarmog'ini rivojlantirish agentligi rahbari", ru: 'Руководитель Агентства по развитию фармацевтической отрасли', en: 'Head of Medical & Pharmaceutical Industry Development Agency' },
@@ -437,19 +470,19 @@ export const translations = {
         items: [
           {
             time: '16:10 – 16:20',
-            title: { uz: 'Boshlovchining yakuniy nutqi va minnatdorchilik', ru: 'Заключительное слово ведущего и благодарности', en: 'Closing remarks by Host & Acknowledgments' },
+            title: { uz: 'Boshlovchining yakuniy nutqi va minnatdorchilik', ru: 'Заключительное слово ведущего и благодарность', en: 'Closing remarks by Host & Acknowledgments' },
             desc: { uz: 'Spikerlar, homiylar va jamoaga tashakkur', ru: 'Благодарность спикерам, спонсорам и команде', en: 'Acknowledgments to Speakers, Sponsors & Team' },
             type: 'main',
           },
           {
             time: '16:20 – 16:35',
-            title: { uz: 'Rasmiy umumiy fotosessiya', ru: 'Официальное общее фото', en: 'Official Group Photo' },
-            desc: { uz: 'Sahna va tomoshabinlar bilan birgalikdagi surat', ru: 'Фотография спикеров, команды и зрителей на сцене', en: 'Stage & Audience group photo' },
+            title: { uz: 'Rasmiy umumiy fotosessiya', ru: 'Официальная общая фотосессия', en: 'Official Group Photo Session' },
+            desc: { uz: 'Sahna va tomoshabinlar bilan birgalikdagi surat', ru: 'Совместное фото на сцене со зрителями', en: 'Stage & Audience group photo' },
             type: 'main',
           },
           {
             time: '16:35 – 16:40',
-            title: { uz: 'Yakuniy muzika va xayrlashuv', ru: 'Финальная музыка и прощание', en: 'Closing music & Farewell' },
+            title: { uz: 'Yakuniy musiqa va xayrlashuv', ru: 'Финальная музыка и прощание', en: 'Closing music & Farewell' },
             desc: { uz: 'Tadbir nihoyasiga yetdi', ru: 'Завершение конференции', en: 'End of conference' },
             type: 'main',
           },
@@ -488,7 +521,7 @@ export const translations = {
       smmHelper: { uz: 'SMM yordamchisi', ru: 'Помощник SMM-менеджера', en: 'SMM Helper' },
       headDesigner: { uz: 'Bosh dizayner', ru: 'Главный дизайнер', en: 'Head Designer' },
       designerAssistant: { uz: 'Dizayner yordamchisi', ru: 'Помощник дизайнера', en: 'Designer Assistant' },
-      headWebsiteManager: { uz: 'Bosh veb-sayt menejeri', ru: 'Главный менеджер сайта', en: 'Head Website Manager' },
+      headWebsiteManager: { uz: 'Bosh veb-dasturchi', ru: 'Главный разработчик сайта', en: 'Lead Web Developer' },
       websiteDeveloper: { uz: 'Veb-sayt dasturchisi', ru: 'Разработчик сайта', en: 'Website Developer' },
     },
   },

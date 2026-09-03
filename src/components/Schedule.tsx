@@ -1,9 +1,17 @@
-import { motion, useInView } from 'framer-motion';
-import { useRef, useState } from 'react';
-import { Clock, Coffee, Music, Sparkles, User, Video, Camera, Award, Mic, CheckCircle2 } from 'lucide-react';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
+import { useRef, useState, useEffect } from 'react';
+import { Clock, Coffee, Music, Sparkles, User, Video, Camera, Award, Mic, CheckCircle2, ChevronRight, X } from 'lucide-react';
 import AnimatedSection from './AnimatedSection';
 import { useLang } from '../i18n/LanguageContext';
 import { translations, type Lang } from '../i18n/translations';
+
+interface SpeakerItem {
+  id: string;
+  name: Record<Lang, string>;
+  title: Record<Lang, string>;
+  bio: Record<Lang, string>;
+  image: string;
+}
 
 interface ScheduleItemData {
   time: string;
@@ -19,6 +27,7 @@ interface SectionData {
   id: string;
   badge: Record<Lang, string>;
   title: Record<Lang, string>;
+  desc?: Record<Lang, string>;
   timeRange: string;
   items: ScheduleItemData[];
 }
@@ -41,7 +50,15 @@ function SectionBadgeIcon({ id }: { id: string }) {
   }
 }
 
-function ScheduleItemCard({ item, index }: { item: ScheduleItemData; index: number }) {
+function ScheduleItemCard({
+  item,
+  index,
+  onSelectSpeaker,
+}: {
+  item: ScheduleItemData;
+  index: number;
+  onSelectSpeaker?: (speakerId: string) => void;
+}) {
   const { lang } = useLang();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-20px' });
@@ -73,7 +90,10 @@ function ScheduleItemCard({ item, index }: { item: ScheduleItemData; index: numb
       {/* Main Content Box */}
       {isTalk ? (
         /* Speaker Talk Card */
-        <div className="rounded-2xl bg-gradient-to-br from-ted-bg-card via-ted-bg-card/90 to-ted-bg border border-ted-border hover:border-ted-red/50 p-4 md:p-5 transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-ted-red/10">
+        <div
+          onClick={() => item.speakerId && onSelectSpeaker?.(item.speakerId)}
+          className="rounded-2xl bg-gradient-to-br from-ted-bg-card via-ted-bg-card/90 to-ted-bg border border-ted-border hover:border-ted-red/60 p-4 md:p-5 transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-ted-red/10 cursor-pointer"
+        >
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             {/* Speaker Avatar */}
             <div className="relative w-14 h-14 md:w-16 md:h-16 rounded-xl overflow-hidden bg-ted-bg-alt flex-shrink-0 border border-ted-red/30 shadow-md">
@@ -93,13 +113,19 @@ function ScheduleItemCard({ item, index }: { item: ScheduleItemData; index: numb
 
             {/* Speaker Details */}
             <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-ted-red/10 text-ted-red border border-ted-red/20">
-                  <Clock size={12} className="mr-1 inline-block" />
-                  {item.time}
-                </span>
-                <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-ted-red text-white rounded-md shadow-xs">
-                  TEDx Speaker
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold tabular-nums bg-ted-red/10 text-ted-red border border-ted-red/20">
+                    <Clock size={12} className="mr-1 inline-block" />
+                    {item.time}
+                  </span>
+                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-ted-red text-white rounded-md shadow-xs">
+                    TEDx Speaker
+                  </span>
+                </div>
+                <span className="text-xs font-semibold text-ted-red flex items-center gap-0.5 group-hover:translate-x-1 transition-transform">
+                  <span>{translations.schedule.bioBtn[lang]}</span>
+                  <ChevronRight size={14} />
                 </span>
               </div>
 
@@ -121,13 +147,13 @@ function ScheduleItemCard({ item, index }: { item: ScheduleItemData; index: numb
 
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-2">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold tabular-nums bg-amber-500/20 text-amber-400 border border-amber-500/30">
                 <Clock size={12} className="mr-1 inline-block" />
                 {item.time}
               </span>
               <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-black rounded-md flex items-center gap-1 font-sans">
                 <Coffee size={12} />
-                Break & Networking
+                {translations.schedule.breakBadge[lang]}
               </span>
             </div>
 
@@ -153,7 +179,7 @@ function ScheduleItemCard({ item, index }: { item: ScheduleItemData; index: numb
               {item.title?.[lang]}
             </span>
           </div>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-mono font-semibold bg-ted-bg-alt text-ted-red border border-ted-border w-fit">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold tabular-nums bg-ted-red/10 text-ted-red border border-ted-red/20 shadow-xs w-fit">
             {item.time}
           </span>
         </div>
@@ -161,7 +187,7 @@ function ScheduleItemCard({ item, index }: { item: ScheduleItemData; index: numb
         /* General Program Item (Opening/Closing) */
         <div className="rounded-xl bg-ted-bg-card border border-ted-border hover:border-ted-red/40 p-4 transition-all">
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-ted-red/10 text-ted-red border border-ted-red/20">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold tabular-nums bg-ted-red/10 text-ted-red border border-ted-red/20">
               <Clock size={12} className="mr-1 inline-block" />
               {item.time}
             </span>
@@ -187,7 +213,29 @@ export default function Schedule() {
   const { lang } = useLang();
   const t = translations.schedule;
   const sections = t.sections as unknown as SectionData[];
+  const allSpeakers = translations.speakers.list as unknown as SpeakerItem[];
   const [activeTab, setActiveTab] = useState<string>('all');
+  const [selectedSpeaker, setSelectedSpeaker] = useState<SpeakerItem | null>(null);
+
+  useEffect(() => {
+    if (!selectedSpeaker) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedSpeaker(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [selectedSpeaker]);
+
+  const handleSelectSpeaker = (speakerId: string) => {
+    const speaker = allSpeakers.find((s) => s.id === speakerId);
+    if (speaker) {
+      setSelectedSpeaker(speaker);
+    }
+  };
 
   const filteredSections = activeTab === 'all'
     ? sections
@@ -252,7 +300,7 @@ export default function Schedule() {
           {filteredSections.map((sec) => (
             <div key={sec.id} className="relative">
               {/* Section Header Banner */}
-              <div className="sticky top-20 z-20 mb-6 bg-ted-bg/95 backdrop-blur-md py-3 border-b border-ted-border/80 flex items-center justify-between gap-4">
+              <div className="sticky top-20 z-20 mb-4 bg-ted-bg/95 backdrop-blur-md py-3 border-b border-ted-border/80 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <span className="px-3 py-1 bg-ted-red/10 border border-ted-red/30 text-ted-red font-black text-xs uppercase tracking-widest rounded-lg flex items-center gap-1.5">
                     <SectionBadgeIcon id={sec.id} />
@@ -262,10 +310,17 @@ export default function Schedule() {
                     {sec.title[lang]}
                   </h3>
                 </div>
-                <span className="text-ted-text-secondary text-xs font-mono font-semibold hidden sm:inline-block bg-ted-bg-card px-2.5 py-1 rounded border border-ted-border">
+                <span className="text-ted-text-secondary text-xs font-semibold tabular-nums hidden sm:inline-block bg-ted-bg-card px-2.5 py-1 rounded border border-ted-border">
                   {sec.timeRange}
                 </span>
               </div>
+
+              {/* Section Description if present */}
+              {sec.desc?.[lang] && (
+                <div className="mb-6 p-4 rounded-xl bg-ted-bg-card/70 border border-ted-border/80 text-ted-text-secondary text-xs sm:text-sm font-medium leading-relaxed italic">
+                  "{sec.desc[lang]}"
+                </div>
+              )}
 
               {/* Vertical Timeline Track */}
               <div className="relative ml-2 sm:ml-4">
@@ -273,7 +328,12 @@ export default function Schedule() {
 
                 <div className="space-y-2">
                   {sec.items.map((item, idx) => (
-                    <ScheduleItemCard key={idx} item={item} index={idx} />
+                    <ScheduleItemCard
+                      key={idx}
+                      item={item}
+                      index={idx}
+                      onSelectSpeaker={handleSelectSpeaker}
+                    />
                   ))}
                 </div>
               </div>
@@ -281,6 +341,70 @@ export default function Schedule() {
           ))}
         </div>
       </div>
+
+      {/* Speaker Bio Modal */}
+      <AnimatePresence>
+        {selectedSpeaker && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-6 overflow-y-auto"
+          >
+            <div
+              className="fixed inset-0 bg-black/70 backdrop-blur-md"
+              onClick={() => setSelectedSpeaker(null)}
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="relative w-full max-w-2xl bg-ted-bg border border-ted-border rounded-2xl shadow-2xl overflow-hidden z-10 max-h-[90vh] flex flex-col"
+            >
+              <button
+                onClick={() => setSelectedSpeaker(null)}
+                aria-label={translations.speakers.closeModal[lang]}
+                className="absolute top-4 right-4 z-20 p-2 bg-ted-bg/80 border border-ted-border text-ted-text hover:text-ted-red hover:bg-ted-bg-alt rounded-full transition-colors backdrop-blur-md"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="overflow-y-auto p-6 md:p-8 space-y-6">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 pt-2">
+                  <img
+                    src={selectedSpeaker.image}
+                    alt={selectedSpeaker.name[lang]}
+                    className="w-32 h-32 sm:w-40 sm:h-40 rounded-2xl object-cover border-2 border-ted-red/20 shadow-lg flex-shrink-0"
+                  />
+                  <div className="text-center sm:text-left">
+                    <span className="inline-block px-3 py-1 bg-ted-red/10 text-ted-red font-bold text-xs uppercase tracking-wider rounded-full mb-3">
+                      TEDx Speaker
+                    </span>
+                    <h3 className="text-2xl md:text-3xl font-black text-ted-text">
+                      {selectedSpeaker.name[lang]}
+                    </h3>
+                    <p className="text-ted-red font-semibold text-base mt-2">
+                      {selectedSpeaker.title[lang]}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t border-ted-border pt-6">
+                  <h4 className="text-xs uppercase font-bold text-ted-text-secondary tracking-wider mb-3">
+                    {translations.speakers.readBio[lang]}
+                  </h4>
+                  <p className="text-ted-text text-base leading-relaxed whitespace-pre-line">
+                    {selectedSpeaker.bio[lang]}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
+

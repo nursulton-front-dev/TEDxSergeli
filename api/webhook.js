@@ -686,12 +686,19 @@ async function getOccupiedSeatsMap() {
   const allTicketIds = (await kv.get('all_ticket_ids')) || [];
 
   const seatMap = {};
+  const now = Date.now();
 
+  // First process user records
   if (Array.isArray(allUserIds)) {
     for (const uid of allUserIds) {
       try {
         const u = await kv.get(`user:${uid}`);
         if (u && u.seatNumber) {
+          // Skip expired user holds
+          if (u.payment_status === 'pending_payment' && u.bookingExpiresAt && u.bookingExpiresAt <= now) {
+            continue;
+          }
+
           seatMap[u.seatNumber] = {
             seatNumber: u.seatNumber,
             type: u.payment_status === 'confirmed' ? 'CONFIRMED' : 'PENDING',
@@ -710,13 +717,16 @@ async function getOccupiedSeatsMap() {
     }
   }
 
+  // Next process confirmed tickets — CONFIRMED tickets always take precedence over pending user holds!
   if (Array.isArray(allTicketIds)) {
     for (const tid of allTicketIds) {
       try {
         const t = await kv.get(`ticket:${tid}`);
         if (t && (t.seatNumber || t.seat)) {
           const sNum = t.seatNumber || t.seat;
-          if (!seatMap[sNum]) {
+          const existing = seatMap[sNum];
+
+          if (!existing || existing.type !== 'CONFIRMED') {
             seatMap[sNum] = {
               seatNumber: sNum,
               type: 'CONFIRMED',
@@ -726,13 +736,13 @@ async function getOccupiedSeatsMap() {
               phone: t.phone || '',
               ticketId: t.id || tid,
               ticketType: t.ticket_type || 'Standard',
-              isManualIssue: !!t.is_manual_issue || t.issued_by != null,
+              isManualIssue: !!t.is_manual_issue || (t.issued_by != null && t.is_manual_issue === true),
               paymentStatus: t.status || 'paid',
               isCheckedIn: t.status === 'used' || !!t.is_checked_in,
               checkedInAt: t.tashkentTime || t.used_at || null
             };
           } else {
-            if (t.is_manual_issue || t.issued_by != null) {
+            if (t.is_manual_issue) {
               seatMap[sNum].isManualIssue = true;
             }
             if (t.status === 'used' || t.is_checked_in) {
@@ -1434,12 +1444,39 @@ async function renderPromoList(chatId, messageId = null) {
 
 // Helper to issue ticket for user (used by Admin Confirm, 100% Free Promo codes, and Manual Admin Issuance)
 async function issueTicketForUser({ userId, user, seatNumber, confirmedBy, promoCode, isManualIssue = false, issuedBy = null, ticketType = 'Standard' }) {
-  const ticketId = `TEDX-${Math.floor(100000 + Math.random() * 900000)}`;
+  // Enforce 100% unique ticket ID check
+  let ticketId;
+  let attempts = 0;
+  do {
+    ticketId = `TEDX-${Math.floor(100000 + Math.random() * 900000)}`;
+    const existing = await kv.get(`ticket:${ticketId}`);
+    if (!existing) break;
+    attempts++;
+  } while (attempts < 100);
 
   let allocatedSeats = (await kv.get('allocated_seats')) || [];
   if (!Array.isArray(allocatedSeats)) allocatedSeats = [];
 
   let finalSeatNum = seatNumber || user.seatNumber;
+
+  // Verify seat availability if seatNumber was specified
+  if (finalSeatNum && finalSeatNum >= 1 && finalSeatNum <= 100) {
+    const existingOwner = await kv.get(`seat_owner:${finalSeatNum}`);
+    if ((allocatedSeats.includes(finalSeatNum) || existingOwner) && String(existingOwner) !== String(userId)) {
+      console.warn(`[SEAT_COLLISION_PREVENTED] Seat #${finalSeatNum} already occupied! Auto-reassigning for user ${userId}...`);
+      if (ADMIN_CHAT_ID) {
+        await callTelegram('sendMessage', {
+          chat_id: ADMIN_CHAT_ID,
+          parse_mode: 'HTML',
+          text: `🚨 <b>ВНИМАНИЕ! ПОПЫТКА ДВОЙНОЙ ПРОДАЖИ МЕСТА</b>\n\n` +
+            `📍 <b>Запрошенное место:</b> №${finalSeatNum}\n` +
+            `👤 <b>Покупатель:</b> ${escapeHtml(user.name || 'Mehmon')} (ID: <code>${userId}</code>)\n` +
+            `⚠️ <b>Место уже занято!</b> Система автоматически переназначает свободное место.`
+        });
+      }
+      finalSeatNum = null;
+    }
+  }
 
   if (!finalSeatNum || finalSeatNum < 1 || finalSeatNum > 100) {
     const activeOccupied = await getActiveOccupiedSeats();
@@ -1449,6 +1486,8 @@ async function issueTicketForUser({ userId, user, seatNumber, confirmedBy, promo
     while (taken.has(next) && next <= 100) next++;
     finalSeatNum = Math.min(100, next);
   }
+
+  await kv.set(`seat_owner:${finalSeatNum}`, String(userId));
 
   if (!allocatedSeats.includes(finalSeatNum)) {
     allocatedSeats.push(finalSeatNum);

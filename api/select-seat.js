@@ -32,6 +32,18 @@ const kv = {
     } catch (e) {
       console.error('KV SET Error:', e);
     }
+  },
+  async setnx(key, value) {
+    if (!KV_URL) return false;
+    try {
+      const res = await fetch(`${KV_URL}/setnx/${key}/${value}`, {
+        headers: { Authorization: `Bearer ${KV_TOKEN}` }
+      });
+      const data = await res.json();
+      return data.result === 1;
+    } catch (e) {
+      return false;
+    }
   }
 };
 
@@ -130,10 +142,31 @@ export default async function handler(req, res) {
     let activeOccupied = await getActiveOccupiedSeats();
 
     if (!heldByThisUser) {
+      const adminChatId = process.env.ADMIN_CHAT_ID || process.env.TELEGRAM_CHAT_IDS;
       if (Array.isArray(allocatedSeats) && allocatedSeats.includes(sNum)) {
+        if (adminChatId) {
+          await callTelegram('sendMessage', {
+            chat_id: adminChatId,
+            parse_mode: 'HTML',
+            text: `🚨 <b>ВНИМАНИЕ! ПОПЫТКА ДВОЙНОГО БРОНИРОВАНИЯ</b>\n\n` +
+              `📍 <b>Место:</b> №${sNum} (${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место)\n` +
+              `👤 <b>Пользователь (Chat ID):</b> <code>${chatId || 'web_app'}</code>\n` +
+              `⚠️ <b>Причина:</b> Попытка забронировать уже ОПЛАЧЕННОЕ место.`
+          });
+        }
         return res.status(409).json({ ok: false, error: 'Seat already sold' });
       }
       if (activeOccupied.some((i) => i.seat === sNum)) {
+        if (adminChatId) {
+          await callTelegram('sendMessage', {
+            chat_id: adminChatId,
+            parse_mode: 'HTML',
+            text: `🚨 <b>ВНИМАНИЕ! ПОПЫТКА ДВОЙНОГО БРОНИРОВАНИЯ</b>\n\n` +
+              `📍 <b>Место:</b> №${sNum} (${seatInfo.sectorName}, ${seatInfo.row}-ряд / ${seatInfo.seat}-место)\n` +
+              `👤 <b>Пользователь (Chat ID):</b> <code>${chatId || 'web_app'}</code>\n` +
+              `⚠️ <b>Причина:</b> Попытка забронировать место в режиме HOLD у другого гостя.`
+          });
+        }
         return res.status(409).json({ ok: false, error: 'Seat already reserved by another guest' });
       }
     }

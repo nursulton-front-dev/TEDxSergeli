@@ -61,12 +61,19 @@ async function getSeatsDetailsMap() {
   const activeOccupied = await getActiveOccupiedSeats();
 
   const detailsMap = {};
+  const now = Date.now();
 
+  // First process user records
   if (Array.isArray(allUserIds)) {
     for (const uid of allUserIds) {
       try {
         const u = await kv.get(`user:${uid}`);
         if (u && u.seatNumber) {
+          // Skip expired user holds
+          if (u.payment_status === 'pending_payment' && u.bookingExpiresAt && u.bookingExpiresAt <= now) {
+            continue;
+          }
+
           detailsMap[u.seatNumber] = {
             seatNumber: u.seatNumber,
             type: u.payment_status === 'confirmed' ? 'CONFIRMED' : 'PENDING',
@@ -83,13 +90,16 @@ async function getSeatsDetailsMap() {
     }
   }
 
+  // Next process confirmed tickets — CONFIRMED tickets always take precedence over pending user holds!
   if (Array.isArray(allTicketIds)) {
     for (const tid of allTicketIds) {
       try {
         const t = await kv.get(`ticket:${tid}`);
         if (t && (t.seatNumber || t.seat)) {
           const sNum = t.seatNumber || t.seat;
-          if (!detailsMap[sNum]) {
+          const existing = detailsMap[sNum];
+
+          if (!existing || existing.type !== 'CONFIRMED') {
             detailsMap[sNum] = {
               seatNumber: sNum,
               type: 'CONFIRMED',

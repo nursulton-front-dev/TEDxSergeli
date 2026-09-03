@@ -152,6 +152,21 @@ export default function Team() {
 
   const restSource: MemberSource[] = [
     {
+      photo: '/team/nursulton.jpg',
+      name: { uz: 'Maxramov Nursulton', ru: 'Makhramov Nursulton', en: 'Makhramov Nursulton' },
+      roleKey: 'headWebsiteManager',
+    },
+    {
+      photo: '/team/sardor.jpg',
+      name: { uz: 'Xolmirzayev Sardor', ru: 'Kholmirzayev Sardor', en: 'Kholmirzayev Sardor' },
+      roleKey: 'websiteDeveloper',
+    },
+    {
+      photo: '/team/akbar.jpg',
+      name: { uz: 'Komiljonov Akbar', ru: 'Komiljonov Akbar', en: 'Komiljonov Akbar' },
+      roleKey: 'websiteDeveloper',
+    },
+    {
       photo: '/team/abdulloh.jpg',
       name: { uz: 'Mahamadjonov Abdulloh', ru: 'Makhamadjonov Abdulloh', en: 'Makhamadjonov Abdulloh' },
       roleKey: 'smmManager',
@@ -170,21 +185,6 @@ export default function Team() {
       photo: '/team/farangiz.jpg',
       name: { uz: 'Farangiz Ibraimova', ru: 'Farangiz Ibraimova', en: 'Farangiz Ibraimova' },
       roleKey: 'designerAssistant',
-    },
-    {
-      photo: '/team/nursulton.jpg',
-      name: { uz: 'Maxramov Nursulton', ru: 'Makhramov Nursulton', en: 'Makhramov Nursulton' },
-      roleKey: 'headWebsiteManager',
-    },
-    {
-      photo: '/team/sardor.jpg',
-      name: { uz: 'Xolmirzayev Sardor', ru: 'Kholmirzayev Sardor', en: 'Kholmirzayev Sardor' },
-      roleKey: 'websiteDeveloper',
-    },
-    {
-      photo: '/team/akbar.jpg',
-      name: { uz: 'Komiljonov Akbar', ru: 'Komiljonov Akbar', en: 'Komiljonov Akbar' },
-      roleKey: 'websiteDeveloper',
     },
   ];
 
